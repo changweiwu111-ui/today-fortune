@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>今日運勢 ・ 刷臉抽籤</title>
+<style>
+  :root{
+    --gold:#d8b66a; --gold-soft:#e8d3a0; --gold-deep:#a9863f;
+    --text:#f3ecdb; --muted:#9b93ab; --line:rgba(216,182,106,.18); --good:#7ad6a0; --mystic:#b69be0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%;}
+  body{
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; color:var(--text);
+    background:
+      radial-gradient(1200px 700px at 50% -10%, #2a2140 0%, transparent 60%),
+      radial-gradient(900px 600px at 90% 110%, #241a3a 0%, transparent 55%),
+      linear-gradient(160deg,#0c0a14 0%,#120d1d 50%,#0a0810 100%);
+    min-height:100%; display:flex; align-items:center; justify-content:center; padding:24px 16px; overflow-x:hidden;
+  }
+  .stage{ width:100%; max-width:440px; position:relative; }
+  .stars{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+  .stars i{position:absolute; width:2px;height:2px;border-radius:50%;background:var(--gold-soft);opacity:.5;animation:tw 4s infinite ease-in-out;}
+  @keyframes tw{0%,100%{opacity:.15;transform:scale(.8)}50%{opacity:.8;transform:scale(1.3)}}
+
+  .screen{display:none; animation:fade .55s ease both; position:relative; z-index:1;}
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0; transform:translateY(12px)}to{opacity:1; transform:none}}
+
+  .card{background:linear-gradient(180deg,rgba(30,23,48,.78),rgba(18,13,29,.9)); border:1px solid var(--line); border-radius:26px; padding:30px 24px 28px;
+    box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04); backdrop-filter:blur(8px);}
+  .brandtag{ text-align:center; letter-spacing:.42em; font-size:11px; color:var(--gold); opacity:.85; margin-bottom:10px; padding-left:.42em;}
+  h1{ text-align:center; font-size:30px; margin:6px 0 4px; font-weight:800; letter-spacing:.04em;
+      background:linear-gradient(180deg,#fff7e3,var(--gold)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .sub{ text-align:center; color:var(--muted); font-size:13.5px; line-height:1.7; margin:6px 4px 0;}
+
+  .btn{display:block; width:100%; border:0; cursor:pointer; padding:16px; border-radius:16px; font-size:16px; font-weight:700; letter-spacing:.05em;
+    color:#1a1208; background:linear-gradient(180deg,var(--gold-soft),var(--gold)); box-shadow:0 12px 30px rgba(216,182,106,.28); transition:.18s; margin-top:22px; font-family:inherit;}
+  .btn:active{transform:translateY(2px); box-shadow:0 6px 16px rgba(216,182,106,.25);}
+  .btn.ghost{ background:transparent; color:var(--gold-soft); border:1px solid var(--line); box-shadow:none; margin-top:12px;}
+
+  .hero-orb{ width:128px; height:128px; margin:18px auto 8px; position:relative; }
+  .hero-orb .core{position:absolute; inset:18px; border-radius:50%;
+    background:radial-gradient(circle at 38% 35%, #fff7e3, var(--gold) 42%, var(--gold-deep) 78%, #5a4520);
+    box-shadow:0 0 40px rgba(216,182,106,.6), inset -8px -10px 24px rgba(0,0,0,.35); animation:bob 4s ease-in-out infinite;}
+  .hero-orb .ring{position:absolute; inset:0; border:1px solid var(--line); border-radius:50%; animation:pulse 2.6s infinite ease-out;}
+  @keyframes pulse{0%{transform:scale(.85);opacity:.7}100%{transform:scale(1.25);opacity:0}}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+
+  /* 輸入 */
+  label{display:block; font-size:12.5px; color:var(--gold-soft); margin:18px 2px 8px; letter-spacing:.06em;}
+  label .opt{color:var(--muted); letter-spacing:0;}
+  input{width:100%; padding:15px 14px; border-radius:13px; font-size:16px; font-family:inherit;
+    background:rgba(12,10,20,.7); border:1px solid var(--line); color:var(--text); outline:none; transition:.15s;}
+  input:focus{border-color:var(--gold); box-shadow:0 0 0 3px rgba(216,182,106,.12);}
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{padding:10px 14px; border-radius:20px; font-size:13.5px; cursor:pointer;
+    background:rgba(12,10,20,.6); border:1px solid var(--line); color:var(--muted); transition:.15s; user-select:none;}
+  .chip.on{background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#1a1208; font-weight:700; border-color:transparent;}
+  .err{color:#e88a8a; font-size:12.5px; text-align:center; margin-top:10px; min-height:16px;}
+
+  /* 臉部掃描 */
+  .scan-title{text-align:center; font-size:19px; font-weight:700; margin-bottom:4px;}
+  .scan-sub{text-align:center; color:var(--muted); font-size:13px; margin-bottom:8px; min-height:18px;}
+  .face-wrap{width:240px; height:240px; margin:20px auto 8px; position:relative; border-radius:50%; overflow:hidden;
+    background:#000; border:1px solid var(--line); box-shadow:0 0 30px rgba(216,182,106,.15);}
+  #cam{width:100%; height:100%; object-fit:cover; transform:scaleX(-1);}
+  .noCam{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:46px;
+    background:radial-gradient(circle at 50% 45%, rgba(216,182,106,.12), transparent 70%);}
+  .face-guide{position:absolute; inset:0; pointer-events:none;}
+  .face-guide .oval{position:absolute; left:50%; top:48%; width:124px; height:156px; transform:translate(-50%,-50%);
+    border:2px dashed rgba(216,182,106,.6); border-radius:50% 50% 48% 48%;}
+  .face-guide .fline{position:absolute; left:8%; right:8%; height:2px; top:50%;
+    background:linear-gradient(90deg,transparent,var(--gold),transparent); box-shadow:0 0 14px 2px rgba(216,182,106,.8); opacity:0;}
+  .face-wrap.scanning .face-guide .fline{opacity:1; animation:fsweep 1.6s linear infinite;}
+  @keyframes fsweep{0%{top:18%}50%{top:82%}100%{top:18%}}
+  .face-ring{position:absolute; inset:0; z-index:3; transform:rotate(-90deg); pointer-events:none;}
+  .face-ring circle{fill:none; stroke-width:5; stroke-linecap:round;}
+  .face-ring .bg{stroke:rgba(255,255,255,.08);}
+  .face-ring .fg{stroke:url(#gp); stroke-dasharray:723; stroke-dashoffset:723; transition:stroke-dashoffset .12s linear; filter:drop-shadow(0 0 6px rgba(216,182,106,.8));}
+  .press-hint{text-align:center; color:var(--gold-soft); font-size:13.5px; letter-spacing:.04em; margin-top:8px; min-height:20px;}
+  .privacy{font-size:11px; color:var(--muted); text-align:center; margin-top:12px; line-height:1.7;}
+  .privacy b{color:var(--gold-soft);}
+
+  /* 結果共用 */
+  .res-name{font-size:13px; color:var(--muted); letter-spacing:.1em; text-align:center;}
+  .mood{ text-align:center; margin:10px 0 14px;}
+  .mood .emo{font-size:58px; line-height:1; display:block; animation:bob 3s ease-in-out infinite;}
+  .mood .label{font-size:26px; font-weight:800; margin-top:10px;
+    background:linear-gradient(180deg,#fff7e3,var(--gold)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .mood .one{font-size:13.5px; color:var(--muted); margin-top:8px; line-height:1.7; padding:0 6px;}
+
+  /* 籤詩 */
+  .qian{margin:6px 0 4px; border-radius:20px; padding:24px 20px 22px; text-align:center; position:relative; overflow:hidden;
+    background:radial-gradient(120% 80% at 50% 0%, rgba(216,182,106,.14), transparent 60%), linear-gradient(180deg, rgba(40,30,18,.7), rgba(24,16,10,.85));
+    border:1px solid rgba(216,182,106,.32); box-shadow:0 16px 40px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);}
+  .qian::before,.qian::after{content:"❖"; position:absolute; color:var(--gold); opacity:.35; font-size:14px;}
+  .qian::before{left:14px; top:12px;} .qian::after{right:14px; bottom:12px;}
+  .qian .lv{display:inline-block; font-size:13px; letter-spacing:.3em; padding:5px 16px 5px 19px; border-radius:20px; border:1px solid rgba(216,182,106,.4); color:var(--gold-soft); margin-bottom:14px;}
+  .qian .poem{font-size:19px; line-height:2.1; letter-spacing:.12em; color:#fff3d8; font-weight:600; text-shadow:0 2px 12px rgba(216,182,106,.25); margin:2px 0;}
+  .qian .jie{margin-top:16px; padding-top:14px; border-top:1px dashed rgba(216,182,106,.28); font-size:13.5px; line-height:1.85; color:var(--muted);}
+  .qian .jie b{color:var(--gold-soft); font-weight:700;}
+
+  /* 為你而解（專屬連結，核心） */
+  .foryou{margin-top:18px; border-radius:20px; padding:22px 20px; position:relative;
+    background:linear-gradient(180deg, rgba(182,155,224,.12), rgba(120,95,180,.06)); border:1px solid rgba(182,155,224,.34);
+    box-shadow:0 16px 40px rgba(60,40,100,.25);}
+  .foryou .ti{font-size:12px; letter-spacing:.18em; color:var(--mystic); margin-bottom:4px;}
+  .foryou .topic{font-size:17px; font-weight:800; color:#f0e9ff; margin-bottom:12px; line-height:1.5;}
+  .foryou p{margin:0; font-size:14.5px; line-height:1.95; color:var(--text);}
+  .foryou .em{color:#dcccff; font-weight:700;}
+  .aitag{margin-top:12px; font-size:11.5px; letter-spacing:.08em; color:var(--mystic); opacity:.85;
+    background:linear-gradient(90deg,rgba(182,155,224,.5),rgba(216,182,106,.6),rgba(182,155,224,.5)); background-size:200% 100%;
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation:shimmer 1.6s linear infinite;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  .score-wrap{ text-align:center; margin:20px 0 6px;}
+  .score-num{font-size:46px; font-weight:800; color:var(--gold); line-height:1;}
+  .score-num small{font-size:16px; color:var(--muted); font-weight:600;}
+  .score-tag{display:inline-block; margin-top:6px; font-size:12px; padding:4px 16px; border-radius:20px; border:1px solid var(--line); color:var(--gold-soft); letter-spacing:.1em;}
+
+  .bars{margin:18px 0 6px;}
+  .bar{margin:11px 0;}
+  .bar .t{display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;}
+  .bar .t span:last-child{color:var(--gold-soft); font-weight:700;}
+  .track{height:8px; border-radius:8px; background:rgba(255,255,255,.06); overflow:hidden;}
+  .fill{height:100%; border-radius:8px; width:0; background:linear-gradient(90deg,var(--gold-deep),var(--gold-soft)); transition:width 1s cubic-bezier(.2,.8,.2,1);}
+
+  .section{margin-top:22px;}
+  .section h3{font-size:13px; color:var(--gold); letter-spacing:.12em; margin:0 0 10px; padding-left:2px;}
+
+  /* 本命元素 */
+  .element{display:flex; gap:14px; align-items:center; background:rgba(12,10,20,.6); border:1px solid var(--line); border-radius:16px; padding:16px;}
+  .element .sym{width:54px; height:54px; flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:800;}
+  .element .tx .nm{font-size:15px; font-weight:800; color:var(--gold-soft);}
+  .element .tx p{margin:5px 0 0; font-size:13px; color:var(--muted); line-height:1.7;}
+
+  /* 能量牌 */
+  .tcard{margin:0 auto; width:100%; border-radius:18px; padding:20px; text-align:center; position:relative; overflow:hidden;
+    background:linear-gradient(180deg, rgba(40,30,18,.8), rgba(20,14,9,.9)); border:1px solid rgba(216,182,106,.32);}
+  .tcard .ico{font-size:42px; line-height:1;}
+  .tcard .nm{font-size:18px; font-weight:800; margin-top:8px; color:#fff3d8;}
+  .tcard .kw{display:inline-block; margin-top:8px; font-size:12px; letter-spacing:.16em; color:var(--gold); padding:3px 14px; border:1px solid rgba(216,182,106,.4); border-radius:20px;}
+  .tcard p{margin:12px 0 0; font-size:13.5px; line-height:1.85; color:var(--muted);}
+
+  .grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin:10px 0 4px;}
+  .cell{background:rgba(12,10,20,.6); border:1px solid var(--line); border-radius:14px; padding:13px 8px; text-align:center;}
+  .cell .k{font-size:10.5px; color:var(--muted); letter-spacing:.06em;}
+  .cell .v{font-size:16px; font-weight:700; margin-top:5px; color:var(--gold-soft);}
+  .cell .v .dot{display:inline-block; width:12px;height:12px;border-radius:50%; vertical-align:-1px; margin-right:4px; border:1px solid rgba(255,255,255,.25);}
+
+  .yi-box{background:rgba(122,214,160,.06); border:1px solid var(--line); border-radius:14px; padding:14px 16px;}
+  .yi-box .tag{font-size:13px; font-weight:800; color:var(--good); margin-bottom:8px;}
+  .yi-box .items{font-size:14px; line-height:1.9; color:var(--text); opacity:.95;}
+  .remind{margin-top:12px; background:rgba(216,182,106,.07); border:1px solid var(--line); border-radius:14px; padding:14px 16px; font-size:13.5px; line-height:1.8; color:var(--gold-soft);}
+  .remind b{color:var(--gold);}
+
+  /* 神秘區 */
+  .mys{background:linear-gradient(180deg, rgba(182,155,224,.1), transparent); border:1px solid rgba(182,155,224,.28); border-radius:16px; padding:16px;}
+  .mys .kw{text-align:center; margin-bottom:14px;}
+  .mys .kw .lab{font-size:11px; color:var(--mystic); letter-spacing:.16em;}
+  .mys .kw .word{font-size:30px; font-weight:800; margin-top:4px; letter-spacing:.2em;
+    background:linear-gradient(180deg,#f0e9ff,var(--mystic)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .mys .kw .mean{font-size:12.5px; color:var(--muted); margin-top:4px;}
+  .mys .secret{font-size:13.5px; line-height:1.85; color:var(--text); padding-top:12px; border-top:1px dashed rgba(182,155,224,.3);}
+  .mys .secret .h{color:var(--mystic); font-weight:800;}
+  .mys .mission{margin-top:12px; font-size:13.5px; line-height:1.8; color:var(--gold-soft);}
+  .mys .mission .h{color:var(--gold); font-weight:800;}
+
+  .face-trait{background:linear-gradient(180deg,rgba(216,182,106,.08),transparent); border:1px solid var(--line); border-radius:16px; padding:16px;}
+  .face-trait .ptn{font-size:13px; color:var(--gold); letter-spacing:.08em;}
+  .face-trait .ttl{font-size:16px; font-weight:800; margin:6px 0 8px;}
+  .face-trait p{margin:0; font-size:13.5px; color:var(--muted); line-height:1.8;}
+
+  .zhenyan{ text-align:center; font-size:16px; line-height:2; color:#fff3d8; padding:22px 18px; margin-top:22px; font-weight:600;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line); letter-spacing:.06em;}
+  .zhenyan .q{color:var(--gold); font-size:22px;}
+  .foot{text-align:center; font-size:10.5px; color:var(--muted); margin-top:18px; line-height:1.7; opacity:.7;}
+
+  /* 生命靈數 / 本命第二張 */
+  .lifepath{margin-top:10px;}
+  .energy-line{margin:12px 2px 0; font-size:13.5px; line-height:1.8; color:var(--gold-soft); text-align:center;}
+
+  /* 神秘揭曉鈕（點我看 QR） */
+  .reveal{margin-top:26px; text-align:center; cursor:pointer; user-select:none; padding:20px 16px; border-radius:18px;
+    border:1px solid rgba(182,155,224,.32);
+    background:linear-gradient(180deg, rgba(182,155,224,.1), rgba(216,182,106,.05));
+    position:relative; overflow:hidden; transition:.3s;}
+  .reveal::after{content:""; position:absolute; top:0; left:-60%; width:40%; height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,247,227,.18),transparent); transform:skewX(-20deg);
+    animation:sweepLight 3s ease-in-out infinite;}
+  @keyframes sweepLight{0%{left:-60%}55%,100%{left:130%}}
+  .reveal:active{transform:scale(.98);}
+  .reveal .reveal-text{font-size:15.5px; font-weight:800; letter-spacing:.04em;
+    background:linear-gradient(180deg,#fff7e3,var(--mystic)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .reveal .reveal-sub{font-size:12.5px; color:var(--mystic); margin-top:8px; letter-spacing:.06em; animation:breathe 2.2s ease-in-out infinite;}
+  @keyframes breathe{0%,100%{opacity:.55}50%{opacity:1}}
+  .reveal.opened{opacity:.45;}
+  .reveal.opened .reveal-sub{content:"";}
+
+  .qrbox{max-height:0; opacity:0; overflow:hidden; transition:max-height .5s ease, opacity .5s ease; text-align:center;}
+  .qrbox.show{max-height:560px; opacity:1; margin-top:14px;}
+  .qr-cap{font-size:13px; letter-spacing:.2em; color:var(--gold); margin-bottom:14px;}
+  .qr-frame{width:220px; height:220px; margin:0 auto; padding:14px; border-radius:20px; background:#fff;
+    box-shadow:0 16px 40px rgba(216,182,106,.25); display:flex; align-items:center; justify-content:center;}
+  .qr-frame img{width:100%; height:100%; display:block;}
+  .qr-handle{margin-top:14px; font-size:17px; font-weight:800; color:var(--gold-soft); letter-spacing:.04em;}
+  .qr-btn{display:inline-block; margin-top:14px; padding:13px 22px; border-radius:14px; font-size:14px; font-weight:700;
+    color:#1a1208; text-decoration:none; background:linear-gradient(180deg,var(--gold-soft),var(--gold)); box-shadow:0 10px 24px rgba(216,182,106,.28);}
+</style>
+</head>
+<body>
+<div class="stars" id="stars"></div>
+<svg width="0" height="0"><defs>
+  <linearGradient id="gp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8d3a0"/><stop offset="1" stop-color="#a9863f"/></linearGradient>
+</defs></svg>
+
+<div class="stage">
+
+  <!-- 1. 封面 -->
+  <section class="screen active" id="s1">
+    <div class="card">
+      <div class="brandtag">每 日 一 籤</div>
+      <div class="hero-orb"><div class="ring"></div><div class="core"></div></div>
+      <h1>今日運勢</h1>
+      <p class="sub">說出今天要做的事，刷個臉<br>抽一支真正<b style="color:var(--gold-soft)">為你而解</b>的籤</p>
+      <button class="btn" onclick="go(2)">開始占卜 ✦</button>
+      <p class="foot">同一個人・同一天・同一件事，籤詩恆定不變<br>一覺醒來，明日自動換新</p>
+    </div>
+  </section>
+
+  <!-- 2. 輸入 -->
+  <section class="screen" id="s2">
+    <div class="card">
+      <div class="brandtag">讓 籤 看 懂 你</div>
+      <h1 style="font-size:24px">準備抽籤</h1>
+      <p class="sub">說得越具體，籤就解得越貼近你</p>
+
+      <label>你的名字 / 暱稱</label>
+      <input id="f-name" placeholder="怎麼稱呼你？" maxlength="20" autocomplete="off">
+
+      <label>生日</label>
+      <input id="f-birth" type="date" max="2025-12-31" min="1920-01-01">
+
+      <label>今天你最在意 / 要做的事</label>
+      <div class="chips" id="sceneChips">
+        <div class="chip on" data-v="綜合">看整體</div>
+        <div class="chip" data-v="面試">面試求職</div>
+        <div class="chip" data-v="簡報">開會簡報</div>
+        <div class="chip" data-v="業務">談合作・業務</div>
+        <div class="chip" data-v="考試">考試進修</div>
+        <div class="chip" data-v="感情">告白・約會</div>
+        <div class="chip" data-v="見人">見重要的人</div>
+        <div class="chip" data-v="決定">做個決定</div>
+        <div class="chip" data-v="難題">處理難題</div>
+        <div class="chip" data-v="休息">休息調整</div>
+        <div class="chip" data-v="出遊">出遊放鬆</div>
+        <div class="chip" data-v="新計畫">開始新計畫</div>
+      </div>
+
+      <label>或，用一句話說今天的事 <span class="opt">（可不填，填了更準）</span></label>
+      <input id="f-thing" placeholder="例：下午要跟一個大客戶提案" maxlength="40" autocomplete="off">
+
+      <div class="err" id="err2"></div>
+      <button class="btn" onclick="toFace()">下一步・刷臉起卦 →</button>
+      <button class="btn ghost" onclick="go(1)">返回</button>
+    </div>
+  </section>
+
+  <!-- 3. 臉部掃描 -->
+  <section class="screen" id="s3">
+    <div class="card">
+      <div class="brandtag">臉 部 感 應</div>
+      <div class="scan-title">將臉對準框內</div>
+      <div class="scan-sub" id="faceSub">啟動鏡頭中…</div>
+      <div class="face-wrap" id="faceWrap">
+        <video id="cam" autoplay playsinline muted></video>
+        <div class="noCam" id="noCam" style="display:none">🔮</div>
+        <div class="face-guide"><div class="oval"></div><div class="fline"></div></div>
+        <svg class="face-ring" viewBox="0 0 240 240"><circle class="bg" cx="120" cy="120" r="115"/><circle class="fg" id="faceFg" cx="120" cy="120" r="115"/></svg>
+      </div>
+      <div class="press-hint" id="faceHint">　</div>
+      <button class="btn" id="manualBtn" style="display:none" onclick="manualDivine()">✦ 點此手動起卦 ✦</button>
+      <p class="privacy">🔒 <b>影像只在你的裝置上即時掃描</b><br>不拍照、不儲存、不上傳，掃完立即關閉鏡頭</p>
+      <button class="btn ghost" onclick="stopCam();go(2)">返回修改</button>
+    </div>
+  </section>
+
+  <!-- 4. 結果 -->
+  <section class="screen" id="s4"><div class="card" id="resultCard"></div></section>
+
+</div>
+
+<script>
+/* 星點 */
+(function(){const s=document.getElementById('stars');let h='';for(let i=0;i<48;i++){h+=`<i style="left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*4}s"></i>`}s.innerHTML=h;})();
+function go(n){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('s'+n).classList.add('active');window.scrollTo(0,0);}
+
+/* 雜湊 + 偽隨機 */
+function cyrb53(str,seed=0){let h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;for(let i=0;i<str.length;i++){const ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}h1=Math.imul(h1^(h1>>>16),2246822507);h1^=Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507);h2^=Math.imul(h1^(h1>>>13),3266489909);return 4294967296*(2097151&h2)+(h1>>>0);}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+let RNG=null;
+function pick(a){return a[Math.floor(RNG()*a.length)];}
+function rint(min,max){return Math.floor(RNG()*(max-min+1))+min;}
+function pickN(a,n){const x=[...a],r=[];for(let i=0;i<n&&x.length;i++)r.push(x.splice(Math.floor(RNG()*x.length),1)[0]);return r;}
+
+/* ============ 資料庫 ============ */
+const MOODS=[
+  {emo:"🌊",label:"平靜如水",one:"心很穩，今天適合慢慢來，把事情一件件做好。"},
+  {emo:"🔥",label:"鬥志高昂",one:"能量滿格，把拖很久的那件事，今天就動手。"},
+  {emo:"🌸",label:"溫柔感性",one:"心思細膩的一天，很適合陪伴在乎的人。"},
+  {emo:"✨",label:"靈感清明",one:"腦袋特別清楚，靈光一閃就先記下來，會有用。"},
+  {emo:"🎈",label:"輕盈愉快",one:"心情輕鬆，把好能量分給別人，會回到你身上。"},
+  {emo:"🌟",label:"自信閃耀",one:"你的狀態被看見了，該開口、該爭取別客氣。"},
+  {emo:"🍃",label:"順其自然",one:"今天順著節奏走，會遇到剛剛好的安排。"},
+  {emo:"🔮",label:"直覺敏銳",one:"第六感特別準，那個讓你猶豫的，相信直覺。"},
+  {emo:"☀️",label:"開朗明亮",one:"今天笑容是你的開運符，多笑一點好事就來。"},
+  {emo:"🌙",label:"沉穩深思",one:"適合好好規劃，把心裡盤算的事想清楚。"},
+  {emo:"💐",label:"人緣正旺",one:"今天人見人愛，主動一點，貴人就在身邊。"},
+  {emo:"🌈",label:"否極泰來",one:"前陣子的辛苦快過去，今天起會越來越順。"},
+  {emo:"🍀",label:"幸運加身",one:"今天運氣偏旺，想做的事不妨大膽試一試。"},
+  {emo:"🕊️",label:"釋懷放下",one:"放下一件心事的好日子，輕一點，路就寬一點。"},
+  {emo:"🔆",label:"專注高效",one:"今天進入心流特別快，留給重要的事，效率驚人。"},
+  {emo:"🌻",label:"暖心治癒",one:"今天適合被療癒，也適合療癒別人，溫度會傳遞。"},
+  {emo:"⚡",label:"果決爽快",one:"今天判斷力強，別猶豫，第一個念頭往往是對的。"},
+  {emo:"🫧",label:"放空清零",one:"腦袋需要留白，今天別塞太滿，空出來才裝得進新東西。"},
+  {emo:"🎯",label:"目標明確",one:"今天看得很清楚自己要什麼，朝那個方向走就對了。"},
+  {emo:"🌅",label:"重新出發",one:"昨天翻篇了，今天是嶄新的一頁，怎麼寫由你決定。"},
+  {emo:"💞",label:"心懷感恩",one:"今天試著看見擁有的，幸福感會悄悄漲上來。"},
+  {emo:"🦋",label:"蛻變成長",one:"你正在變得更好，今天的不安，是成長的前奏。"}
+];
+const QIAN={
+  上上籤:[
+    {poem:["雲開見月正分明","前路風光分外清","心中所求皆可遂","順風揚帆萬里程"],jie:"今日<b>諸事順遂</b>，心想事成，主動出擊正是時候。"},
+    {poem:["金雞報曉日初升","好事連連喜上眉","但求心正行端處","福祿自來不用催"],jie:"<b>大吉之日</b>，貴人與好運齊聚，保持善念福自來。"},
+    {poem:["龍躍九天得時飛","風雲際會正當期","平生抱負今朝展","一鳴驚人眾所知"],jie:"<b>展現自己的最佳時機</b>，藏在心裡的計畫放膽去做。"},
+    {poem:["紫氣東來瑞滿門","吉星高照福星臨","所謀所望皆遂意","喜上眉梢笑語溫"],jie:"<b>瑞氣盈門</b>，所望皆能遂意，喜事將近。"},
+    {poem:["鯉躍龍門一夕成","十年寒窗今日榮","莫道功名來太晚","時機一到自然亨"],jie:"<b>時機已到</b>，過去的苦熬今朝開花，莫疑成就晚。"},
+    {poem:["旭日東昇照九州","陰霾散盡見清流","凡事如今逢轉好","揚眉吐氣在心頭"],jie:"陰霾散盡、<b>雨過天晴</b>，凡事逢凶化吉、轉好。"},
+    {poem:["春雷一響萬物醒","枯枝逢春再轉青","你的時節正當令","放手去做事必成"],jie:"<b>你的時節正當令</b>，萬物復甦，放手去做必成。"},
+    {poem:["鳳棲梧桐引祥光","貴客盈門喜事忙","良緣善果今朝聚","心想事成福滿堂"],jie:"<b>良緣善果齊聚</b>，貴客盈門，心想事成。"},
+    {poem:["滿園春色關不住","一枝紅杏出牆來","你的才華藏不住","今日正是綻放台"],jie:"<b>才華藏不住</b>，今日正是你綻放、被看見的舞台。"},
+    {poem:["江海納川氣象開","百川歸處盡是財","心胸有多寬廣處","福報就有多少來"],jie:"<b>心有多寬，福報就有多廣</b>，廣納則大有所成。"},
+    {poem:["明月當空照大千","清輝灑落事皆圓","你心所願天知曉","靜待佳音落眼前"],jie:"<b>心願天知</b>，靜待佳音，所求之事將落眼前。"},
+    {poem:["喜從天降福臨身","貴人提攜遇真心","今日開口多吉利","所求之事十成真"],jie:"<b>喜從天降</b>，貴人提攜，今日開口諸事十成。"},
+    {poem:["寶劍鋒從磨礪出","梅花香自苦寒來","你熬過的那些日子","今朝化作滿樹開"],jie:"<b>苦盡甘來</b>，你熬過的日子，今朝化作滿樹花開。"},
+    {poem:["千里東風今日來","吹開心事吹開懷","積壓多時終得解","好運接連叩你門"],jie:"<b>東風已至</b>，積壓多時的事終於得解，好運叩門。"},
+    {poem:["鵬程萬里正啟航","青雲有路任飛揚","莫疑前方無知己","天涯處處遇貴方"],jie:"<b>鵬程萬里</b>，前路有貴人相迎，放心啟航。"},
+    {poem:["金榜題名時運通","洞房花燭喜重重","人生得意須盡歡","你的好日子正當中"],jie:"<b>時運大通</b>，人生得意之時，好日子正當中。"},
+    {poem:["福如東海水長流","壽比南山不老松","今日種下善因果","來日福蔭滿庭中"],jie:"<b>福德深厚</b>，今日種善因，來日福蔭滿庭。"},
+    {poem:["撥開雲霧見青天","守得心明事自圓","你堅持的終有回報","光明就在轉念間"],jie:"<b>撥雲見日</b>，你的堅持終有回報，光明在轉念間。"},
+    {poem:["錦上添花喜事增","一帆風順步步升","你的努力天看見","今朝果熟正當承"],jie:"<b>錦上添花</b>，努力被看見，果熟正當承接。"},
+    {poem:["天時地利又人和","三者齊備事如何","放膽去做休遲疑","今日正是你的歌"],jie:"<b>天時地利人和</b>三者齊備，放膽去做莫遲疑。"}
+  ],
+  上吉籤:[
+    {poem:["春回大地百花開","喜事臨門次第來","莫負好時勤耕種","他日定有滿園栽"],jie:"好的開始正發生，<b>努力會被看見</b>，宜播種、開口、爭取。"},
+    {poem:["東風送暖入簾來","枯木逢春再發枝","用心經營眼前事","水到渠成自有時"],jie:"運勢回升，<b>累積開始開花</b>，穩穩經營好結果在路上。"},
+    {poem:["喜鵲枝頭報吉聲","貴人相助事能成","真心待人人待我","廣結善緣福自生"],jie:"<b>貴人運強</b>，宜連絡人、談合作，真誠待人有回報。"},
+    {poem:["細雨潤物正無聲","一夜春來草色生","你的耕耘漸有成","靜候花開莫心驚"],jie:"<b>潛移默化見成效</b>，你的耕耘漸有成，靜候花開。"},
+    {poem:["順水行舟風正輕","兩岸青山相送迎","今日所行多順遂","心安便是好前程"],jie:"<b>順水行舟</b>，今日所行多順遂，心安便是好前程。"},
+    {poem:["雲淡風輕近午天","傍花隨柳過前川","今朝心境多開朗","好事一件接一件"],jie:"<b>心境開朗</b>，今天好事一件接一件，輕鬆以對。"},
+    {poem:["一分耕耘一分收","你的付出天記酬","今日漸入佳境裡","莫急莫躁好兆頭"],jie:"<b>付出有酬</b>，漸入佳境，莫急莫躁是好兆頭。"},
+    {poem:["桃李春風一杯酒","故人相逢笑語稠","今日人和諸事順","真心交陪福長久"],jie:"<b>人和諸事順</b>，真心交陪，福氣長久。"},
+    {poem:["山重水複疑無路","柳暗花明又一村","你以為的盡頭處","其實藏著新的門"],jie:"<b>柳暗花明</b>，你以為的盡頭，其實藏著新的門。"},
+    {poem:["好風憑藉力相扶","送你扶搖上碧梧","今日借勢正當時","順勢而為事不孤"],jie:"<b>借勢而起</b>，今日順勢而為，有貴人扶你一把。"},
+    {poem:["春江水暖鴨先知","你已嗅到好時機","別人還在觀望時","你先一步占先機"],jie:"<b>先機在握</b>，你已嗅到好時機，先一步就先得。"},
+    {poem:["一葉知秋見端倪","好的轉變正悄起","今日留心好機緣","把握當下莫遲疑"],jie:"<b>好轉悄起</b>，留心好機緣，把握當下莫遲疑。"},
+    {poem:["花徑漸覺日初長","燕子歸來繞畫梁","舊識新緣皆是福","今朝心暖事順昌"],jie:"<b>舊識新緣皆福</b>，今朝心暖、諸事順昌。"},
+    {poem:["勤能補拙是良圖","你的踏實天看顧","今日穩中還帶進","一步一階上坦途"],jie:"<b>穩中帶進</b>，你的踏實被天看顧，一步一階上坦途。"},
+    {poem:["清泉石上潺潺流","心事如水順勢遊","今日放下執著處","反而柳暗花明頭"],jie:"<b>放下則輕</b>，卸下執著反而柳暗花明。"},
+    {poem:["良禽擇木而棲息","你的眼光自有理","今日所選多正確","順著心走不會錯"],jie:"<b>眼光精準</b>，今日所選多正確，順著心走不會錯。"},
+    {poem:["一念放下萬般輕","你卸下的那份重","今日換得心開闊","好運跟著輕鬆來"],jie:"<b>一念放下萬般輕</b>，心開闊了，好運跟著來。"},
+    {poem:["風吹麥浪滿地金","你播的種正抽芯","耐心再等些時日","豐收就在不遠村"],jie:"<b>豐收將近</b>，你播的種正抽芽，耐心再等些時。"},
+    {poem:["雲收雨霽天放晴","心頭陰霾一掃清","今日重拾好心情","好事跟著好心生"],jie:"<b>雨過天晴</b>，重拾好心情，好事跟著好心生。"},
+    {poem:["撐一支長篙向前","滿載星輝好揚帆","今日順流多得意","前程似錦在眼前"],jie:"<b>滿載而歸</b>，今日順流得意，前程似錦在眼前。"}
+  ],
+  中吉籤:[
+    {poem:["行船漸入順流時","雲淡風輕正當宜","穩住舵手莫心急","自有清波送你歸"],jie:"運勢<b>平穩向上</b>，不必躁進，踏實做好自有好結果。"},
+    {poem:["山路彎彎終有平","步步踏實步步明","莫問前程多與少","但行好事自光明"],jie:"<b>一步一腳印</b>最吉，做好眼前就是進步。"},
+    {poem:["晴空偶有片雲飄","無礙青天日照高","保持心寬天地寬","小事何須掛眉梢"],jie:"<b>心寬則順</b>，小插曲無妨，看開一點全是順境。"},
+    {poem:["細水長流方致遠","你的穩當是本錢","今日不必爭快慢","走得安穩勝爭先"],jie:"<b>細水長流</b>，你的穩當是本錢，走穩勝過爭快。"},
+    {poem:["平湖秋月兩相宜","淡淡日子有真味","今日無風也無浪","安安穩穩便是吉"],jie:"<b>平淡有真味</b>，今日無風無浪，安穩便是吉。"},
+    {poem:["一步一個腳印深","路雖不快卻是真","今日踏實做手邊","積少成多自有成"],jie:"<b>踏實積累</b>，做好手邊事，積少成多自有成。"},
+    {poem:["心田常種善與寬","日子自然多平安","今日待人多一笑","好緣好運繞身邊"],jie:"<b>善待結好緣</b>，今日多一笑，好運繞身邊。"},
+    {poem:["雲在青天水在瓶","各安其位各自寧","今日守好你本分","自有清福伴你行"],jie:"<b>各安其位</b>，守好本分，自有清福相伴。"},
+    {poem:["守得本心不亂搖","任他風雨任他朝","今日穩住莫慌張","船到橋頭自然調"],jie:"<b>穩住莫慌</b>，船到橋頭自然直，沉得住就過得去。"},
+    {poem:["半畝方塘一鑑開","天光雲影共徘徊","今日靜心觀自照","煩惱自然散如埃"],jie:"<b>靜心自照</b>，煩惱散如塵埃，今日宜觀照內心。"},
+    {poem:["春有百花秋有月","日子總有好時節","今日平淡藏滋味","知足便是大福澤"],jie:"<b>知足是大福</b>，平淡日子藏滋味，珍惜當下。"},
+    {poem:["竹杖芒鞋輕勝馬","一蓑煙雨任平生","今日心寬無罣礙","淡看風雨也是晴"],jie:"<b>心寬無罣礙</b>，淡看風雨也是晴天。"},
+    {poem:["流水不爭先後到","終究百川匯成濤","今日不必趕在前","穩穩走來路自高"],jie:"<b>不爭先後</b>，穩穩走來路反而越走越高。"},
+    {poem:["一壺清茶半日閒","忙裡偷得片刻安","今日節奏放慢些","反而看清前方山"],jie:"<b>忙裡偷閒</b>，放慢些反而看清前方的路。"},
+    {poem:["月有陰晴圓又缺","人有起落本尋常","今日平心看得失","心若安然事便祥"],jie:"<b>平心看得失</b>，心若安然，事便祥和。"},
+    {poem:["耕讀傳家久且長","本本分分自有方","今日守住手邊事","點滴積累成寶藏"],jie:"<b>本分自有方</b>，點滴積累終成寶藏。"},
+    {poem:["清風明月本無價","近水遠山皆有情","今日多看身邊好","知足常樂福自生"],jie:"<b>多看身邊好</b>，知足常樂，福氣自生。"},
+    {poem:["小荷才露尖尖角","你的好正在發芽","今日耐心多澆灌","時候到了自開花"],jie:"<b>正在發芽</b>，你的好需要時間，耐心澆灌自會開花。"},
+    {poem:["不疾不徐自有度","你的從容是福路","今日按著節奏走","水到渠成莫催促"],jie:"<b>不疾不徐</b>，按節奏走，水到渠成莫催促。"},
+    {poem:["一簾幽夢一窗書","淡淡光陰也是福","今日守住小確幸","平凡日子有真趣"],jie:"<b>小確幸是真趣</b>，守住平凡日子裡的好。"}
+  ],
+  平穩籤:[
+    {poem:["靜水深流養精神","守得雲開見月明","今朝宜緩不宜急","蓄力他時自有成"],jie:"宜<b>沉澱與蓄力</b>，放慢腳步反而走得遠，照顧好自己。"},
+    {poem:["明珠暫掩塵埃裡","拭去浮塵自有光","莫嘆一時無人識","終待識者來欣賞"],jie:"你的好<b>值得等對的時機</b>，先準備好，機會來就接得住。"},
+    {poem:["閒看庭前花開落","靜觀天外雲卷舒","得失隨緣心自在","平常日子是清福"],jie:"<b>平淡是清福</b>，今日放過自己，好好生活就是養運。"},
+    {poem:["潛龍在淵未騰時","養精蓄銳待天時","今日宜守不宜進","時機未到莫心急"],jie:"<b>潛龍在淵</b>，養精蓄銳待天時，今日宜守不宜進。"},
+    {poem:["千淘萬漉雖辛苦","吹盡狂沙始到金","今日的磨是淬鍊","別急著問何時成"],jie:"<b>淬鍊中</b>，今日的磨是必要的，別急著問何時成。"},
+    {poem:["冬藏方有春之發","今日的靜是醞釀","把根扎得深一些","來日枝葉自然壯"],jie:"<b>冬藏待春發</b>，把根扎深，來日枝葉自然壯。"},
+    {poem:["心靜自然涼一片","何須外求覓清歡","今日收攝紛亂念","安住當下即是安"],jie:"<b>心靜自涼</b>，收攝紛亂，安住當下即是安。"},
+    {poem:["風雨之後待天晴","烏雲背後是光明","今日先安頓自己","好天氣會自己來臨"],jie:"<b>先安頓自己</b>，風雨之後，好天氣會自己來。"},
+    {poem:["大器晚成莫著急","你的火候正在積","今日沉住這口氣","成就往往在後期"],jie:"<b>大器晚成</b>，火候正在積，沉住氣成就在後期。"},
+    {poem:["一張一弛文武道","今日的緩是必要","繃緊的弦該鬆鬆","養好精神再起跑"],jie:"<b>一張一弛</b>，今日該鬆鬆，養好精神再起跑。"},
+    {poem:["守拙歸真養天年","不爭一時論長遠","今日退一步觀望","反而看清該怎麼前"],jie:"<b>退一步看清</b>，今日觀望，反而看清該怎麼往前。"},
+    {poem:["寒夜客來茶當酒","清貧日子也溫柔","今日心安無所求","簡單便是大自由"],jie:"<b>簡單即自由</b>，今日無所求，心安便是溫柔。"},
+    {poem:["山中無曆日相催","寒盡不知年已回","今日放下時間軸","順其自然心不累"],jie:"<b>順其自然</b>，放下時間的催逼，心就不累。"},
+    {poem:["厚積方能有薄發","今日的等是力量","把該學的學紮實","機會來時穩穩抓"],jie:"<b>厚積薄發</b>，把該學的學紮實，機會來穩穩抓。"},
+    {poem:["心如止水照天光","不起波瀾自清涼","今日收心向內看","養好底氣再啟航"],jie:"<b>收心向內</b>，養好底氣，再啟航不遲。"},
+    {poem:["守得一分清靜地","勝過奔波萬里塵","今日宜靜不宜動","安住此心即是真"],jie:"<b>守靜即真</b>，安住此心，勝過奔波勞碌。"},
+    {poem:["沉舟側畔千帆過","病樹前頭萬木春","今日雖未見成果","生機其實正在生"],jie:"<b>生機正生</b>，雖未見果，新的力量已在萌動。"},
+    {poem:["蟄伏不是無作為","是為來日蓄勢飛","今日把自己顧好","時候一到自然回"],jie:"<b>蟄伏蓄勢</b>，把自己顧好，時候到自然飛回。"},
+    {poem:["慢工方能出細活","今日急不得半分","把該磨的好好磨","自有水到渠成日"],jie:"<b>慢工出細活</b>，好好磨，自有水到渠成日。"},
+    {poem:["留得青山在心頭","何愁日後沒柴燒","今日先把自己守","來日方長莫煩惱"],jie:"<b>留得青山在</b>，先把自己守住，來日方長莫煩惱。"}
+  ],
+  蓄力籤:[
+    {poem:["寒梅傲雪待春時","根深方知歲月慈","莫嘆眼前風雨過","枝頭暗結未開枝"],jie:"眼前的緩慢<b>都是養分</b>，溫柔待己，轉機在路上。"},
+    {poem:["夜深正是黎明前","守得心安天地寬","莫向暗中尋煩惱","曙光就在轉角邊"],jie:"<b>最暗離天亮最近</b>，先照顧好自己，好運正靠近。"},
+    {poem:["溪流遇石暫迴旋","終向大海不改絃","眼前波折非阻路","繞個彎來路更寬"],jie:"<b>只是繞個彎</b>，順勢調整，路會更開闊。"},
+    {poem:["冬天到了春不遠","你熬的苦終會甜","今日先把心安住","好的正在來的路上"],jie:"<b>苦盡終會甜</b>，先把心安住，好的正在來。"},
+    {poem:["烏雲總有散去時","陽光從不曾缺席","今日的難只是過場","撐住就見好天氣"],jie:"<b>陽光從不缺席</b>，今日的難只是過場，撐住見晴。"},
+    {poem:["種子破土前最暗","那是用力的時刻","今日的悶是蓄勁","別放棄你快冒芽"],jie:"<b>正在用力冒芽</b>，今日的悶是蓄勁，別放棄。"},
+    {poem:["退潮之後是漲潮","低谷之後路向高","今日身在低處時","記得這只是過渡橋"],jie:"<b>低谷之後向高</b>，記得這只是過渡，不是終點。"},
+    {poem:["千磨萬擊還堅勁","任爾東西南北風","今日的考驗是禮物","挺過便是脫胎成"],jie:"<b>考驗是禮物</b>，挺過便是脫胎換骨。"},
+    {poem:["黑夜給了黑色眼","你卻用它尋找光","今日縱然有些難","你比想像更堅強"],jie:"<b>你比想像更堅強</b>，用難處磨出來的眼，正在尋光。"},
+    {poem:["風雨不誤趕路人","泥濘留下深腳印","今日每步雖辛苦","都算數都在靠近"],jie:"<b>每步都算數</b>，今日的辛苦都在靠近目標。"},
+    {poem:["冰霜歷盡心猶暖","苦盡甘來日不遠","今日先抱抱自己","你已經很努力了"],jie:"<b>先抱抱自己</b>，你已經很努力，苦盡甘來不遠。"},
+    {poem:["山窮水盡疑無路","轉個念便柳暗明","今日換個角度看","困局其實有出口"],jie:"<b>換個角度看</b>，困局其實有出口，轉念即明。"},
+    {poem:["寒爐重撥舊時火","灰燼之中尚有溫","今日別說沒希望","一點火種能燎原"],jie:"<b>火種能燎原</b>，別說沒希望，一點光就夠。"},
+    {poem:["跌倒原是學站立","低谷教你看清地","今日的痛有意義","它在替你鋪根基"],jie:"<b>跌倒是學站立</b>，今日的痛在替你鋪根基。"},
+    {poem:["大雪壓青松不折","青松挺且直如初","今日的重你扛得住","壓不垮的會更強固"],jie:"<b>壓不垮的更強</b>，今日的重你扛得住。"},
+    {poem:["河冰結合非一日","春暖花開亦有期","今日的等待不白費","時候到了冰自離"],jie:"<b>春暖花開有期</b>，等待不白費，時候到冰自離。"},
+    {poem:["守得雲開終見日","熬過寒冬便是春","今日緊握那點光","它會帶你走出困"],jie:"<b>守得雲開見日</b>，緊握那點光，它帶你出困。"},
+    {poem:["雨後彩虹掛天邊","淚後笑容更燦然","今日的難會過去","好日子在後頭等"],jie:"<b>雨後有彩虹</b>，今日的難會過去，好日子在等你。"},
+    {poem:["老樹著花無醜枝","你的轉機正當時","別被一時困住眼","春風不久度玉枝"],jie:"<b>轉機正當時</b>，別被一時困住眼，春風不久就到。"},
+    {poem:["行至水窮處且坐","坐看雲起時自開","今日無路非絕路","靜下來路自然來"],jie:"<b>水窮處看雲起</b>，靜下來，路自然會來。"}
+  ]
+};
+const TAGS={上上籤:"大吉・順流而上",上吉籤:"上吉・穩中有進",中吉籤:"中吉・平順有福",平穩籤:"平穩・宜守養氣",蓄力籤:"蓄力・轉機在前"};
+
+/* 為你而解：依「今天要做的事」客製（核心連結） */
+const SCENE={
+  面試:["關於今天的面試——你準備得比你以為的更充分。進門的前 30 秒最關鍵，深呼吸、把肩膀打開，讓對方先感受到你的<span class='em'>從容</span>。今天你的氣場適合『被記住』，別怕展現真實的自己，那正是他們在找的人。",
+        "今天去面試，記得：你不是去『被挑選』，是去『互相看看合不合』。把姿態放在這個高度，你的眼神會更穩。對方問到弱點時別慌，<span class='em'>誠實再帶一句你怎麼改善</span>，反而最加分。",
+        "今天這場面試，你的對手不是別人，是緊張本身。提早 10 分鐘到，給自己一段安定的時間。<span class='em'>把你做過最得意的一件事準備成一個故事</span>，被問到時自然帶出，會比任何形容詞都有力。"],
+  簡報:["今天的開會／簡報，重點不在講得多完整，而在讓人<span class='em'>記住一句話</span>。開場先講結論，再展開細節，聽的人會跟著你走。途中若有人質疑，別急著反駁，先說『這個問題很好』，氣勢就回到你身上。",
+        "上台前做一件事：把最想讓他們行動的那一句，寫在第一頁。今天你的表達力在線上，<span class='em'>慢半拍、眼神掃過全場</span>，比講快更有說服力。",
+        "今天報告，與其證明自己很厲害，不如讓對方覺得『這跟我有關』。多用『你們會得到什麼』的角度講。<span class='em'>真的緊張就握緊一支筆</span>，把注意力放在內容、不放在自己身上，反而穩。"],
+  業務:["今天談合作／談業務，客戶要的不是你多會講，是<span class='em'>感覺被你懂</span>。少說 20% 的話，多問一個『那你最在意的是什麼？』成交往往就在那句之後。今天你的親和力是武器，真誠勝過話術。",
+        "今天適合『收線』。如果有個案子卡了一陣子，今天主動跟進一句，很可能就鬆動。記住：<span class='em'>給對方一個現在就決定的理由</span>，但語氣要輕，壓力感是成交的天敵。",
+        "今天面對客戶，先別急著推你的東西，先聽懂他真正煩惱的是什麼。<span class='em'>把自己當成幫他解決問題的人，而不是賣東西的人</span>，信任建立了，成交只是水到渠成的事。"],
+  考試:["今天考試／進修——你會的比你緊張時感覺到的多。<span class='em'>先寫會的，把分數穩穩拿到手</span>，難題回頭再啃。卡住時深呼吸三次，答案常常就在你放鬆的那一刻浮出來。",
+        "今天讀書效率特別高的時段在上午與傍晚。把最硬的章節放在那兩段。記得：<span class='em'>理解一題，勝過硬背十題</span>，今天你的腦袋適合『想通』而不是『塞滿』。",
+        "今天面對考試，把它想成『把會的展現出來』，而不是『被檢驗哪裡不會』。心態一換，手就不抖了。<span class='em'>遇到難題先跳過，別卡在一棵樹錯過整片林</span>，回頭再戰勝率更高。"],
+  感情:["今天關於感情——真誠比技巧重要一百倍。如果要告白或約會，<span class='em'>讓對方多說，你多聽</span>，被理解的感覺會讓好感加倍。別演完美，你自然的樣子才是最迷人的部分。",
+        "今天你的情感雷達很準。那個讓你心動或猶豫的訊號，相信它。要不要再靠近一點，答案其實你心裡有了——<span class='em'>今天適合誠實面對自己的心意</span>。",
+        "今天感情上，與其猜對方在想什麼，不如把自己的心意好好表達一次。<span class='em'>勇敢不是不怕，是怕了還是說出口</span>。不論結果如何，誠實面對的你，已經很迷人。"],
+  見人:["今天要見的那個重要的人——你不需要刻意討好。<span class='em'>把注意力放在對方身上</span>，記住他說的一個小細節，比準備一堆話題更打動人。今天你給人的第一印象偏暖，這是你的優勢。",
+        "見面前先放下『他會怎麼看我』，換成『我想了解他什麼』。今天你的傾聽力是加分項。<span class='em'>一個真誠的提問，會打開原本想不到的話題</span>。",
+        "今天這場見面，真誠會被感覺到。不用急著表現，<span class='em'>自然、專注、適時點頭</span>，比口若懸河更讓人舒服。對方記住的往往不是你說了什麼，是你讓他覺得自己很重要。"],
+  決定:["今天適合做那個拖很久的決定。把選項寫下來，問自己一句：<span class='em'>哪個選擇，是未來的我會感謝的？</span>答案往往不在更多分析裡，而在你第一直覺指的方向。今天你的判斷力清明，別再拖了。",
+        "如果還在兩難，用這個方法：想像已經選了 A，感受身體是放鬆還是緊繃？身體比腦袋誠實。<span class='em'>今天你的直覺特別準</span>，跟著那份『鬆一口氣』的感覺走。",
+        "今天要做的決定，沒有完美選項，只有你願意承擔的選項。<span class='em'>選了就別再回頭比較</span>，把它變成對的，比選一個對的更重要。你比自己以為的更有勇氣。"],
+  難題:["今天要處理的難題，沒有你想的那麼大。<span class='em'>先把它拆成三小塊，只解決第一塊</span>，動起來之後你會發現後面跟著鬆。卡關時別硬扛，今天求援不是弱點，是聰明。",
+        "面對難題，今天最忌『一個人悶著想』。找一個你信任的人說出來，光是講一遍，思路就會清楚一半。<span class='em'>你比自己想的更有能力解決它</span>，先深呼吸，再開始。",
+        "今天的難題，與其問『為什麼是我』，不如問『我可以先做哪一步』。<span class='em'>行動會稀釋焦慮</span>。先處理最緊急的那一塊，其餘的，做著做著就有頭緒了。"],
+  休息:["今天就是要你<span class='em'>好好休息</span>，這不是偷懶，是補充明天的能量。把待辦清單收起來，做一件純粹讓自己開心的小事。允許自己慢下來，世界不會因此停止運轉。",
+        "你已經很久沒有好好照顧自己了。今天適合『什麼都不做』也沒關係。<span class='em'>睡飽、吃好、散個步</span>，把電充滿，比硬撐著做事更有價值。",
+        "今天請把『休息』也當成一件正事來做。<span class='em'>關掉通知、泡個澡、追一集喜歡的劇</span>，不必有罪惡感。會休息的人，才走得久。你值得這份喘息。"],
+  出遊:["今天出遊／放鬆——把手機收起來一會，<span class='em'>用眼睛好好記住眼前的風景</span>。今天容易在不經意的地方遇到驚喜，保持放鬆與好奇，好心情會自己找上門。",
+        "今天適合『隨興一點』。不必把行程排太滿，留一點空白給意外的美好。<span class='em'>一個臨時起意的轉彎，可能就是今天最棒的回憶</span>。",
+        "今天出去走走，記得不是去『打卡』，是去『感受』。<span class='em'>深呼吸一口外面的空氣，讓陽光曬在臉上</span>。最好的風景，往往是你願意停下來看的那一刻。"],
+  新計畫:["今天適合<span class='em'>開始那件你想很久的事</span>。不必等到萬事俱備——先踏出第一步，路會在走的過程中浮現。今天你的行動力與運勢同頻，起頭就對了一半。",
+        "新計畫的起點，重點不是完美，是『開始』。今天先做最小的一步：寫下來、發第一則訊息、買第一樣材料。<span class='em'>種子種下去，剩下的交給時間</span>。",
+        "今天要展開的新計畫，別被『會不會成功』綁住手腳。<span class='em'>先求有，再求好</span>。每個厲害的東西都有一個很醜的開始。你只要負責出發，路會自己長出來。"],
+  綜合:["今天的主旋律是『順勢而為』。不必跟誰較勁，把注意力放在<span class='em'>能掌控的事</span>上，其餘交給時間。一件件慢慢來，今天的你會比想像中更穩。",
+        "今天適合對自己好一點。把那些『應該』放一邊，問問自己今天真正想要什麼。<span class='em'>照顧好心情，運氣自然跟著好</span>。",
+        "今天不必把自己逼太緊。<span class='em'>做好一件最重要的事，今天就值得了</span>。其餘的，允許它慢一點。穩穩過完今天，你會發現日子其實一直站在你這邊。"]
+};
+function topicTitle(){
+  if(USER.thing) return `關於你說的：「${esc(USER.thing)}」`;
+  const map={面試:"關於今天的面試求職",簡報:"關於今天的開會簡報",業務:"關於今天的談合作・業務",考試:"關於今天的考試進修",感情:"關於今天的感情・約會",見人:"關於今天要見的重要的人",決定:"關於今天要做的決定",難題:"關於今天要處理的難題",休息:"關於今天的休息調整",出遊:"關於今天的出遊放鬆",新計畫:"關於今天要展開的新計畫",綜合:"關於你的今天"};
+  return map[USER.scene]||map.綜合;
+}
+
+/* 五行本命（加厚敘述） */
+const ELEMENTS={
+  金:{c:"#e8d36a",bg:"rgba(232,211,106,.15)",d:"你內在有一股<b>不服輸的韌性</b>，重情義、講原則，認定的事就會做到底。表面或許溫和，骨子裡卻很有主見。你的課題是學會適時柔軟——不是每件事都要爭對錯，懂得放手的金，反而更鋒利、更貴重。你天生帶著一種讓人信賴的份量，這是你最珍貴的資產。"},
+  木:{c:"#7ad6a0",bg:"rgba(122,214,160,.15)",d:"你像一棵向陽生長的樹，<b>溫和卻充滿生命力</b>，總能在逆境裡找到向上的方向。你心地善良、容易為別人著想，也因此偶爾把自己擺得太後面。記得：樹要先把根扎穩、把自己養好，才有餘力庇蔭別人。你的成長從不是爆發式的，而是年年抽高，越走越枝繁葉茂。"},
+  水:{c:"#6a9bd8",bg:"rgba(106,155,216,.15)",d:"你<b>聰慧、善感、適應力極強</b>，像水一樣能繞過任何阻礙、流向任何容器。你的直覺很準，能讀懂別人沒說出口的情緒。但水也容易把心事藏太深、想太多。你的功課是讓情緒有出口——找到能讓你安心傾訴的人。柔軟是你的力量，水滴石穿，你的溫柔比你想的更有穿透力。"},
+  火:{c:"#e88a8a",bg:"rgba(232,138,138,.15)",d:"你<b>熱情、直接、行動力強</b>，是會點燃身邊人的那種存在。你愛憎分明、討厭虛偽，做事講求效率與痛快。你的魅力來自那股真實的能量，但火也需要學會控溫——不是每件事都要立刻、馬上。懂得收放的火，既能照亮別人，也不會燒到自己。你天生就是場子裡的光源。"},
+  土:{c:"#d8b66a",bg:"rgba(216,182,106,.15)",d:"你<b>穩重、可靠、有耐性</b>，是別人最想依靠的那個人。你不追求一時的鋒芒，而是默默把事情做扎實，時間久了，所有人都知道你靠得住。你的課題是別把所有重量都自己扛——適時示弱、學會求助，不會減損你的可靠。大地承載萬物，而你，就是身邊人心裡那塊踏實的地。"}
+};
+const ELEM_KEYS=["金","木","水","火","土"];
+
+/* 生命靈數（由生日數字加總，本命固定） */
+const LIFE_PATH={
+  1:{t:"開創者",d:"你天生帶著領導與開創的能量，獨立、有主見、不愛跟風。你適合走在前面，開別人沒走過的路。記得：偶爾接受別人的幫助，不會讓你變弱，只會讓路走得更遠。"},
+  2:{t:"和諧者",d:"你細膩、體貼、善於感受他人，是團隊裡的潤滑劑。你的力量在於『連結』與『協調』。記得：照顧別人之餘，也要把自己的感受放進考量，你的需要一樣重要。"},
+  3:{t:"表達者",d:"你充滿創意與感染力，天生會表達、懂得讓氣氛變好。你的笑容與話語有療癒人的力量。記得：把那份才華用在你真正熱愛的事上，世界需要你的光與聲音。"},
+  4:{t:"築基者",d:"你務實、可靠、有紀律，是那種把地基打得很穩的人。別人靠靈感，你靠堅持與累積。記得：偶爾允許計畫有點彈性，留白也是一種智慧，你已經夠努力了。"},
+  5:{t:"自由者",d:"你熱愛自由與變化，好奇心旺盛、適應力強，討厭被框住。你的人生注定多采多姿。記得：自由不是逃避，而是在體驗裡找到真正讓你安定的核心。"},
+  6:{t:"守護者",d:"你溫暖、有責任感，總是默默照顧著身邊的人，是家與團體的支柱。你的愛很深。記得：愛人之前先把自己的杯子裝滿，你值得同樣被好好對待。"},
+  7:{t:"探求者",d:"你善於思考、洞察力強，喜歡深入事物的本質，有一種與眾不同的智慧。你需要獨處來充電。記得：別把世界看得太透而忘了感受，偶爾用心、別只用腦。"},
+  8:{t:"豐盛者",d:"你有野心、有格局，天生懂得整合資源、掌握局面，是能把事情做大的人。財富與成就是你的課題。記得：真正的豐盛，是內在的安定加上外在的成果，兩者你都值得。"},
+  9:{t:"奉獻者",d:"你心胸寬廣、富有同理心，常為了更大的理想付出，是天生的給予者。你的格局超越自身。記得：在照亮世界之前，先別忘了也照顧好那個一直在付出的自己。"},
+  11:{t:"啟發者",d:"你是少見的『大師數』，直覺敏銳、富有靈性，常能給人啟發與帶來希望。你的天線比別人靈。記得：把這份敏感當禮物而非負擔，你註定要為某些人帶來光。"},
+  22:{t:"實現者",d:"你是罕見的『大師數』，兼具遠大理想與務實執行力，能把夢想真正落地。你的潛力極大。記得：別被自己的高標準壓垮，一步一步來，你能蓋出別人想像不到的高度。"}
+};
+function lifePathNum(birth){ // birth: YYYY-MM-DD
+  let s=birth.replace(/[^0-9]/g,'');
+  function reduce(n){while(n>9&&n!==11&&n!==22){n=String(n).split('').reduce((a,b)=>a+(+b),0);}return n;}
+  let sum=s.split('').reduce((a,b)=>a+(+b),0);
+  return reduce(sum);
+}
+const TODAY_ENERGY=[
+  "今天天地的能量與你的本命<b>相生</b>，是順勢而為、放手去做的好日子。",
+  "今天的氣場偏<b>動</b>，適合主動出擊、開口爭取，靜不如動。",
+  "今天的氣場偏<b>靜</b>，適合沉澱、收尾、把細節做好，緩比快更吉。",
+  "今天有一股<b>貴人能量</b>環繞，多與人互動，好事常從別人口中帶來。",
+  "今天適合<b>向內</b>——你的直覺與靈感特別強，重要的答案在你心裡。"
+];
+
+/* 能量牌（正向意象） */
+const CARDS=[
+  {ico:"⭐",nm:"星星",kw:"希望・指引",p:"黑夜裡那顆最亮的星，正為你指路。今天你心裡那個小小的期待，值得被相信。"},
+  {ico:"☀️",nm:"太陽",kw:"豐盛・成功",p:"今天能量燦爛，是會發光的一天。你做的事容易被看見，放心展現自己。"},
+  {ico:"🌍",nm:"世界",kw:"圓滿・達成",p:"一個階段正要完成。今天適合收尾、慶祝、為一段努力畫上句點。"},
+  {ico:"🦁",nm:"力量",kw:"勇氣・柔韌",p:"真正的強大是溫柔的堅持。今天用溫和而堅定的方式，你能搞定看似困難的事。"},
+  {ico:"🎩",nm:"魔術師",kw:"創造・行動",p:"你手上的資源比你以為的多。今天適合把想法變成行動，你有讓事情發生的能力。"},
+  {ico:"🌙",nm:"女祭司",kw:"直覺・靜聽",p:"答案不在外面，在你心裡。今天靜下來聽自己的聲音，直覺會帶你到對的地方。"},
+  {ico:"🔆",nm:"節制",kw:"平衡・節奏",p:"今天的關鍵是『剛剛好』。不過度、不勉強，找到自己的節奏，一切就順了。"},
+  {ico:"🎡",nm:"命運之輪",kw:"轉機・流動",p:"輪子正往好的方向轉。今天可能出現一個意外的轉折，順著它走會有驚喜。"},
+  {ico:"🍀",nm:"愚者",kw:"開始・自由",p:"帶著一顆輕盈的心出發。今天適合嘗試新事物，別想太多，跨出去就對了。"},
+  {ico:"👑",nm:"皇后",kw:"豐盛・滋養",p:"今天適合善待自己與身邊的人。給出去的溫柔，會以豐盛的形式回到你身上。"},
+  {ico:"🔥",nm:"戰車",kw:"前進・掌控",p:"目標明確、油門踩下去的一天。今天你掌控力強，認定方向就勇敢往前。"},
+  {ico:"💎",nm:"星辰之鑽",kw:"價值・自信",p:"別小看自己的價值。今天你的閃光點會被對的人看見，挺直腰桿。"},
+  {ico:"🕊️",nm:"高塔之後",kw:"重建・釋放",p:"舊的破了，是為了讓更好的進來。今天適合放下執著，騰出空間迎接新的可能。"},
+  {ico:"⚖️",nm:"正義",kw:"公平・抉擇",p:"今天適合做出公正的判斷。誠實面對、為自己的選擇負責，你會走得很安心。"},
+  {ico:"🌟",nm:"審判",kw:"覺醒・召喚",p:"今天你心裡有個聲音在呼喚你。聽見它，那是你真正想成為的樣子在敲門。"},
+  {ico:"🤝",nm:"戀人",kw:"連結・選擇",p:"今天關於『心』的事特別重要。順從你的真心去連結，對的關係會讓你更完整。"},
+  {ico:"🌾",nm:"星幣國王",kw:"穩健・收成",p:"你的踏實累積到了收成期。今天適合處理實際、長遠的事，穩穩的你最有福。"},
+  {ico:"🎁",nm:"星幣六",kw:"給予・流動",p:"今天適合分享，也適合接受。善意像活水一樣流動，給出去的會以好運回來。"},
+  {ico:"🌱",nm:"權杖芽",kw:"新生・熱情",p:"一股新的熱情正在你心裡發芽。今天跟著那份興奮走，它指向你真正想做的事。"},
+  {ico:"🏡",nm:"聖杯十",kw:"圓滿・歸屬",p:"今天適合回到讓你安心的人事物身邊。幸福不在遠方，就在你珍惜的日常裡。"}
+];
+
+/* 幸運素材 */
+const COLORS=[{n:"曙光金",c:"#d8b66a"},{n:"靜謐藍",c:"#6a9bd8"},{n:"森林綠",c:"#6ec08a"},{n:"櫻緋粉",c:"#e88aa8"},{n:"暮霞橘",c:"#e8a86a"},{n:"紫晶",c:"#9b7ad6"},{n:"珍珠白",c:"#f0ecdf"},{n:"湖水青",c:"#6ad6c4"},{n:"赤誠紅",c:"#d86a6a"},{n:"麥金黃",c:"#e8d36a"}];
+const DIRS=["正東","東南","正南","西南","正西","西北","正北","東北"];
+const HOURS=["清晨 5–7","上午 9–11","正午 11–13","午後 13–15","傍晚 17–19","入夜 19–21"];
+const GUIREN=["主動關心你的朋友","一位年長的前輩","穿亮色衣服的人","名字有水的人","久未聯絡的舊識","笑容很溫暖的人","與你同月生的人","話不多但靠譜的人"];
+const KAIYUN=["一杯熱茶","隨身的小香氛","一首喜歡的歌","乾淨的桌面","一支好寫的筆","窗邊的陽光","一句說出口的感謝","口袋裡的小硬幣"];
+const YI=["主動聯絡一位想念的人","完成一件拖很久的小事","好好吃一頓飯","早一點休息","出門曬曬太陽","對自己說句肯定的話","整理一個小角落","記錄今天的心情","深呼吸三次再開始","幫別人一個小忙"];
+const REMIND=["今天若覺得累，允許自己慢一點，不用什麼都扛在身上。","別急著回覆所有訊息，先把自己照顧好，世界等得起你。","遇到不順心的事，深呼吸就好，它沒有你想的那麼大。","記得多喝水、抬頭看看天，小小的休息會帶來大大的清明。","不必跟任何人比較，你有自己的節奏，那就很好。","把『謝謝』說出口，今天的好運會因為一句感謝而加倍。","晚上早點放下手機，給自己一段安靜的時間充電。"];
+/* 神秘 */
+const KEYWORDS=[
+  {w:"破繭",m:"你正在脫去舊的自己"},{w:"綻放",m:"準備好被看見"},{w:"連結",m:"今天的緣分很重要"},
+  {w:"沉澱",m:"慢下來才看得清"},{w:"勇氣",m:"那件你怕的事，做它"},{w:"臣服",m:"放手，讓事情流動"},
+  {w:"扎根",m:"穩住，根越深枝越高"},{w:"豐盛",m:"你值得更多的好"},{w:"閃耀",m:"別藏起你的光"},
+  {w:"流動",m:"不執著，路自然開"},{w:"溫柔",m:"先對自己好一點"},{w:"啟程",m:"是時候出發了"},
+  {w:"專注",m:"少而精，勝過多而散"},{w:"信任",m:"相信你的直覺"},{w:"釋放",m:"放下一個包袱"},
+  {w:"圓滿",m:"一件事將收尾"},{w:"清明",m:"今天看得特別透"},{w:"蛻變",m:"你正在變得更好"},
+  {w:"安住",m:"待在當下就好"},{w:"突破",m:"瓶頸要鬆動了"},{w:"感恩",m:"看見你已擁有的"},
+  {w:"果決",m:"別再猶豫了"},{w:"療癒",m:"今天適合修復自己"},{w:"豐收",m:"努力要結果了"},
+  {w:"重生",m:"翻篇，重新開始"},{w:"靜定",m:"心穩，事就穩"},{w:"光亮",m:"你就是別人的光"},
+  {w:"無畏",m:"怕，還是去做"},{w:"順流",m:"今天別逆勢硬撐"},{w:"歸真",m:"做回真實的自己"}
+];
+const SECRETS=[
+  "留意今天出現的<b>數字 7</b>，它會在某個不經意的地方給你提示。",
+  "今天有一個人，正在心裡想起你。",
+  "一個<b>遲來的好消息</b>，已經在路上了，耐心一點。",
+  "今天你會在一句別人隨口的話裡，找到你一直在找的答案。",
+  "注意一抹<b>意外的顏色</b>——它出現時，代表你走對了方向。",
+  "今天的某個『巧合』其實不是巧合，那是宇宙給你的點頭。",
+  "一扇你以為關上的門，今天會悄悄留一條縫。",
+  "今天傍晚前，留意一個讓你會心一笑的小訊號。",
+  "今天有句你需要的話，會從一個意想不到的人嘴裡說出來。",
+  "留意<b>重複出現的數字</b>，那是宇宙在跟你眨眼。",
+  "今天你幫的一個小忙，會在未來某天變成你的貴人。",
+  "一個你以為錯過的機會，其實正繞了路回到你身邊。",
+  "今天的一場小雨或一陣風，會剛好洗掉你心裡的某個結。",
+  "你最近常想的那件事，今天會收到一個微小但明確的徵兆。",
+  "今天請相信第一個直覺，它比你反覆的分析更接近真相。",
+  "有個好消息正在醞釀，它選在你準備好的那天才登場。",
+  "今天遇到的小阻礙，其實是在把你推往更好的方向。",
+  "留意<b>一首突然想起的歌</b>，歌詞裡藏著給你的話。",
+  "今天某個微笑、某句問候，會在你心裡留得比想像中久。",
+  "你正在等的那個答案，其實已經在你心裡，今天會浮上來。"
+];
+const MISSIONS=[
+  "對一個陌生人或同事，<b>真心稱讚一句</b>。",
+  "今天<b>主動傳訊息</b>給一個許久沒聯絡的人。",
+  "找一個獨處的 3 分鐘，<b>什麼都不做，只是呼吸</b>。",
+  "今天<b>對自己說一句感謝的話</b>，謝謝自己撐到現在。",
+  "把一件你一直想丟的東西<b>丟掉</b>，清出新的能量空間。",
+  "今天<b>喝一杯平常不會點的飲料</b>，給生活一點新鮮。",
+  "睡前<b>寫下今天三件好事</b>，再小都算。",
+  "今天<b>讚美自己的身體一次</b>——它一直很努力。",
+  "今天<b>對家人說一句平常說不出口的話</b>。",
+  "找 10 分鐘<b>把手機放遠一點</b>，只是發呆也好。",
+  "今天<b>慢慢走一段平常用衝的路</b>，看看沿途。",
+  "替自己<b>準備一頓有儀式感的飯</b>，好好吃完。",
+  "今天<b>原諒一件一直放不下的小事</b>，放過自己。",
+  "對著鏡子<b>跟自己說聲早安</b>，認真看自己一眼。",
+  "今天<b>記錄一個讓你笑出來的瞬間</b>。",
+  "完成一件<b>拖超過三天的小事</b>，把它劃掉。",
+  "今天<b>主動跟一個人道謝或道歉</b>，了結一樁心事。",
+  "睡前<b>深呼吸十次</b>，把今天好好還給今天。",
+  "今天<b>替未來的自己做一件小準備</b>，哪怕只一步。",
+  "為自己<b>買一樣不貴但會開心的小東西</b>。"
+];
+/* 面相本命（由生日固定，加厚敘述） */
+const FACE=[
+  {ptn:"天庭飽滿型",desc:"你的額頭開闊明亮，相學上主<b>少年運與思考運強</b>。你天生腦子靈活、點子多，常能想到別人想不到的角度，是團體裡那個『欸我有個想法』的人。你的優勢是反應快、學東西快；要留意的是別讓念頭太多而分心。今天你的判斷與創意特別在線，<b>相信你的第一個靈感，它通常是對的</b>。"},
+  {ptn:"眼神有光型",desc:"眼睛是你一生最大的武器。你的眼神真誠而專注，<b>讓人不自覺地想信任你、靠近你</b>。相學說『眼有神則貴』，你天生就有讓人記住的氣場。你的功課是別把心事全寫在眼裡——學會在該收的時候收。今天你的氣場容易贏得好感，<b>重要的對話、見面、談判，都站在你這邊</b>。"},
+  {ptn:"笑顏帶福型",desc:"你笑起來有福相，<b>天生人緣好、招貴人</b>。相學上講『笑口常開福自來』，你的親和力是別人怎麼學都學不來的資產。陌生人也容易對你卸下防備，這在人際與事業上是巨大的優勢。要留意的是別為了討好而委屈自己。今天請<b>多笑、多主動，貴人與機會都會被你的笑容吸引過來</b>。"},
+  {ptn:"地閣方圓型",desc:"你的下巴飽滿沉穩，相學上主<b>晚運與根基厚實</b>，是典型『越老越有福』的格局。你務實、可靠、有耐性，不追求一時鋒芒，卻能把事情做得很扎實，時間會站在你這邊。你的人生像滾雪球，越往後越穩、越往後越大。今天適合<b>做需要耐性與長遠眼光的事，穩紮穩打就是你的天賦</b>。"}
+];
+const ZHENYAN=["你已經做得很好了，今天也要記得肯定自己。","最好的運氣，是準備好的人遇上對的時機。","慢下來不是落後，是為了走得更遠。","今天的每個選擇，都是未來的你會感謝的。","把心打開一點，好事正在悄悄靠近。","相信自己的節奏，你不需要跟任何人賽跑。","溫柔對待自己，是一天裡最值得的投資。","好好過今天，明天自然會替你鋪好路。","你不需要很厲害才能開始，但開始了才會很厲害。","你以為的繞遠路，常常是命運在帶你看風景。","別怕走得慢，要怕的是停下來不再相信自己。","你的價值，從來不是別人說了算。","今天撒下的善意，會在你忘記時開花。","風雨總會過去，而你撐傘的樣子很美。","把今天過好，就是對未來最好的承諾。","你值得擁有的，正在路上，別先放棄。"];
+
+/* ============ 輸入 ============ */
+let USER=null;
+document.getElementById('sceneChips').addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;document.querySelectorAll('#sceneChips .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');});
+function matchScene(txt){
+  const t=txt;const rules=[[/(面試|找工作|履歷|錄取|應徵)/,"面試"],[/(開會|報告|簡報|提案|上台|演講|發表)/,"簡報"],[/(客戶|成交|業務|合作|簽約|合約|談判|生意|案子)/,"業務"],[/(考試|考|讀書|證照|檢定|複習|期末)/,"考試"],[/(告白|約會|喜歡|曖昧|對象|相親|交往|心動)/,"感情"],[/(見|拜訪|長輩|父母|主管|老闆|前輩|聚)/,"見人"],[/(決定|選擇|要不要|抉擇|猶豫|該不該)/,"決定"],[/(難|問題|搞定|處理|麻煩|衝突|吵|和解|卡)/,"難題"],[/(休息|放鬆|累|耍廢|睡|耍|喘口氣)/,"休息"],[/(出遊|旅|玩|出去|散心|放空|度假)/,"出遊"],[/(開始|新|計畫|啟動|創業|第一天|展開)/,"新計畫"]];
+  for(const[re,k]of rules)if(re.test(t))return k;return "綜合";
+}
+function toFace(){
+  const name=document.getElementById('f-name').value.trim();
+  const birth=document.getElementById('f-birth').value;
+  const err=document.getElementById('err2');
+  if(!name){err.textContent="請先告訴我怎麼稱呼你 🙏";return;}
+  if(!birth){err.textContent="請選擇你的生日 ✦";return;}
+  err.textContent="";
+  const thing=document.getElementById('f-thing').value.trim();
+  let scene=document.querySelector('#sceneChips .chip.on').dataset.v;
+  if(thing) scene=matchScene(thing);
+  USER={name,birth,thing,scene};
+  startFace();
+}
+
+/* ============ 臉部掃描 ============ */
+const cam=document.getElementById('cam'),faceWrap=document.getElementById('faceWrap'),faceFg=document.getElementById('faceFg');
+const faceHint=document.getElementById('faceHint'),faceSub=document.getElementById('faceSub'),noCam=document.getElementById('noCam'),manualBtn=document.getElementById('manualBtn');
+const FCIRC=723,FDUR=3400; let stream=null,fraf=null;
+async function startFace(){
+  go(3); faceHint.textContent="　"; faceFg.style.strokeDashoffset=FCIRC; faceWrap.classList.remove('scanning');
+  faceSub.textContent="啟動鏡頭中…"; noCam.style.display="none"; manualBtn.style.display="none"; cam.style.display="block";
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+    cam.srcObject=stream; faceSub.textContent="把臉對準虛線框，保持不動";
+    setTimeout(beginFaceScan,800);
+  }catch(err){
+    cam.style.display="none"; noCam.style.display="flex";
+    faceSub.textContent="鏡頭未開啟也沒關係";
+    faceHint.textContent="（未授權或此瀏覽器不支援鏡頭）";
+    manualBtn.style.display="block";
+  }
+}
+function beginFaceScan(){
+  if(!stream)return; faceWrap.classList.add('scanning'); const start=performance.now();
+  const msgs=["偵測臉部輪廓…","讀取面相能量…","比對生辰星象…","為你起卦中…"];
+  (function step(){
+    if(!stream)return; const p=Math.min((performance.now()-start)/FDUR,1);
+    faceFg.style.strokeDashoffset=FCIRC*(1-p); faceHint.textContent=msgs[Math.min(msgs.length-1,Math.floor(p*msgs.length))];
+    if(p>=1){faceWrap.classList.remove('scanning');faceHint.textContent="✦ 起卦完成 ✦";if(navigator.vibrate)navigator.vibrate([30,40,30]);stopCam();setTimeout(()=>{computeAndShow();go(4);},650);return;}
+    fraf=requestAnimationFrame(step);
+  })();
+}
+function manualDivine(){faceHint.textContent="✦ 起卦完成 ✦";if(navigator.vibrate)navigator.vibrate([30,40,30]);setTimeout(()=>{computeAndShow();go(4);},400);}
+function stopCam(){cancelAnimationFrame(fraf);if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}cam.srcObject=null;}
+
+/* ============ 計算 + 渲染 ============ */
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function esc(s){return(s+'').replace(/[<>&"]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[m]));}
+
+/* ====== 記憶功能（localStorage）：同一個人、同一天，結果永遠一致 ====== */
+function loadMem(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
+function saveMem(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+const IG_URL="https://instagram.com/changw_0331";
+const IG_HANDLE="@changw_0331";
+
+function computeAndShow(){
+  const today=todayStr();
+  const idKey=`${USER.name.trim()}|${USER.birth}`;          // 身份指紋（名字+生日）
+
+  // —— 本命（永久固定，與日期無關）——
+  const bSeed=cyrb53(idKey,99);
+  const elemKey=ELEM_KEYS[bSeed%5], elem=ELEMENTS[elemKey];
+  const face=FACE[bSeed%4];
+  const lpNum=lifePathNum(USER.birth), life=LIFE_PATH[lpNum]||LIFE_PATH[1];
+
+  // —— 今日核心（同人同日永遠一致；與「今天要做的事」無關）——
+  // 先讀記憶；沒有才演算並寫入記憶 → 保證同一個人當天結果不會變
+  const coreKey=`fortune_core_${idKey}|${today}`;
+  let core=loadMem(coreKey);
+  if(!core){
+    RNG=mulberry32(cyrb53(`${idKey}|${today}`));
+    const mood=pick(MOODS);
+    let base=rint(48,98);
+    const sub=b=>Math.max(40,Math.min(99,b+rint(-15,15)));
+    let cats={事業:sub(base),財運:sub(base),愛情:sub(base),健康:sub(base)};
+    const overall=Math.round((base+cats.事業+cats.財運+cats.愛情+cats.健康)/5);
+    const lv=overall>=85?"上上籤":overall>=72?"上吉籤":overall>=58?"中吉籤":overall>=48?"平穩籤":"蓄力籤";
+    core={mood,cats,overall,lv,
+      qian:pick(QIAN[lv]),energy:pick(TODAY_ENERGY),tcard:pick(CARDS),
+      color:pick(COLORS),num:rint(1,9),dir:pick(DIRS),hour:pick(HOURS),guiren:pick(GUIREN),kaiyun:pick(KAIYUN),
+      yi:pickN(YI,3),remind:pick(REMIND),kw:pick(KEYWORDS),secret:pick(SECRETS),mission:pick(MISSIONS),zhen:pick(ZHENYAN)};
+    saveMem(coreKey,core);
+  }
+  const {mood,cats,overall,lv,qian,energy,tcard,color,num,dir,hour,guiren,kaiyun,yi,remind,kw,secret,mission,zhen}=core;
+
+  // —— 為你而解：隨「今天要做的事」變；靜態 fallback 由專屬 seed 固定 ——
+  RNG=mulberry32(cyrb53(`${idKey}|${today}|${USER.scene}|${USER.thing}`));
+  const guide=pick(SCENE[USER.scene]||SCENE.綜合);
+  // AI 文案記憶：同人同日同事 → 直接用快取，連 API 都不打，保證一致
+  const aiKey=`fortune_ai_${idKey}|${today}|${USER.scene}|${USER.thing}`;
+  const aiCached=loadMem(aiKey);
+  const foryouHTML=aiCached?esc(aiCached).replace(/\n+/g,'<br>'):guide;
+
+  document.getElementById('resultCard').innerHTML=`
+    <div class="brandtag">${esc(USER.name)} 的 今 日 籤</div>
+    <div class="res-name">${today.replaceAll('-','/')}</div>
+
+    <div class="mood"><span class="emo">${mood.emo}</span><div class="label">${mood.label}</div><div class="one">${mood.one}</div></div>
+
+    <div class="qian">
+      <div class="lv">${lv}</div>
+      <div class="poem">${qian.poem.map(esc).join('<br>')}</div>
+      <div class="jie">【解曰】${qian.jie}</div>
+    </div>
+
+    <div class="foryou">
+      <div class="ti">✦ 為 你 而 解 ✦</div>
+      <div class="topic">${topicTitle()}</div>
+      <p id="foryouText">${foryouHTML}</p>
+      ${aiCached?'':'<div id="aiTag" class="aitag">✨ 通靈中・AI 正在為你細解…</div>'}
+    </div>
+
+    <div class="score-wrap"><div class="score-num">${overall}<small> / 100</small></div><div class="score-tag">${TAGS[lv]}</div></div>
+    <div class="bars">${bar("事業運",cats.事業)}${bar("財運",cats.財運)}${bar("感情運",cats.愛情)}${bar("健康運",cats.健康)}</div>
+
+    <div class="section">
+      <h3>你 的 本 命 解 析</h3>
+      <div class="element">
+        <div class="sym" style="background:${elem.bg};color:${elem.c};border:1px solid ${elem.c}55">${elemKey}</div>
+        <div class="tx"><div class="nm">本命屬${elemKey}</div><p>${elem.d}</p></div>
+      </div>
+      <div class="element lifepath">
+        <div class="sym" style="background:rgba(182,155,224,.15);color:var(--mystic);border:1px solid rgba(182,155,224,.4)">${lpNum}</div>
+        <div class="tx"><div class="nm" style="color:var(--mystic)">生命靈數 ${lpNum}・${life.t}</div><p>${life.d}</p></div>
+      </div>
+      <p class="energy-line">${energy}</p>
+    </div>
+
+    <div class="section">
+      <h3>今 日 能 量 牌</h3>
+      <div class="tcard"><div class="ico">${tcard.ico}</div><div class="nm">${tcard.nm}</div><span class="kw">${tcard.kw}</span><p>${tcard.p}</p></div>
+    </div>
+
+    <div class="section">
+      <h3>今 日 開 運 指 引</h3>
+      <div class="grid">
+        <div class="cell"><div class="k">幸運色</div><div class="v"><span class="dot" style="background:${color.c}"></span>${color.n}</div></div>
+        <div class="cell"><div class="k">幸運數字</div><div class="v">${num}</div></div>
+        <div class="cell"><div class="k">幸運方位</div><div class="v">${dir}</div></div>
+        <div class="cell"><div class="k">吉時</div><div class="v" style="font-size:13px">${hour}</div></div>
+        <div class="cell"><div class="k">今日貴人</div><div class="v" style="font-size:12px;line-height:1.4">${guiren}</div></div>
+        <div class="cell"><div class="k">開運小物</div><div class="v" style="font-size:12px;line-height:1.4">${kaiyun}</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>今 日 宜</h3>
+      <div class="yi-box"><div class="tag">宜 ○</div><div class="items">・${yi.join('<br>・')}</div></div>
+      <div class="remind"><b>悄悄話 ✦</b> ${remind}</div>
+    </div>
+
+    <div class="section">
+      <h3>天 機 ・ 只 給 你 看</h3>
+      <div class="mys">
+        <div class="kw"><div class="lab">今 日 關 鍵 字</div><div class="word">${kw.w}</div><div class="mean">${kw.m}</div></div>
+        <div class="secret"><span class="h">宇宙暗號：</span>${secret}</div>
+        <div class="mission"><span class="h">今日隱藏任務：</span>${mission}<br><span style="color:var(--muted);font-size:12px">（完成它，今天的好運會悄悄加碼）</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>你 的 面 相 本 命</h3>
+      <div class="face-trait"><div class="ptn">🔮 ${face.ptn}</div><div class="ttl">屬於你的天生特質</div><p>${face.desc}</p></div>
+    </div>
+
+    <div class="zhenyan"><span class="q">「</span>${zhen}<span class="q">」</span></div>
+
+    <div class="reveal" id="igReveal" onclick="toggleQR()">
+      <div class="reveal-text">⟡ 你的籤，還有最後一句沒解完 ⟡</div>
+      <div class="reveal-sub">點我，解開與占卜師的緣分 →</div>
+    </div>
+    <div class="qrbox" id="qrbox">
+      <div class="qr-cap">與占卜師結緣 ✦</div>
+      <div class="qr-frame"><img id="qrimg" alt="IG QR" /></div>
+      <div class="qr-handle">${IG_HANDLE}</div>
+      <a class="qr-btn" href="${IG_URL}" target="_blank" rel="noopener">開啟 Instagram，追蹤每日好運 →</a>
+    </div>
+
+    <button class="btn" onclick="share()">分享我的籤 ✦</button>
+    <button class="btn ghost" onclick="go(3)">重新刷臉起卦</button>
+    <button class="btn ghost" onclick="go(2)">換個人 / 換件事</button>
+    <p class="foot">本占卜為娛樂用途・籤詩由你的名字、生日、今天要做的事與日期共同演算<br>同人同日結果恆定（已記憶），明日自動換新 ✦ 每日一籤</p>
+  `;
+  window._share={name:USER.name,mood:mood.label+mood.emo,lv,overall,poem:qian.poem.join('／'),kw:kw.w,card:tcard.nm,color:color.n};
+  if(!aiCached) enhanceForYou({name:USER.name,thing:USER.thing,scene:USER.scene,lv,mood:mood.label},aiKey);
+}
+// 呼叫雲端函式請 Gemini 即時客製「為你而解」；成功則存入記憶（下次同人同事一致）；任何失敗都靜默退回內建文案
+function enhanceForYou(payload,aiKey){
+  const p=document.getElementById('foryouText'), tag=document.getElementById('aiTag');
+  if(!p){return;}
+  const drop=()=>{if(tag)tag.remove();};
+  const ctrl=new AbortController(); const tm=setTimeout(()=>ctrl.abort(),11000);
+  fetch('/.netlify/functions/fortune',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctrl.signal})
+    .then(r=>r.ok?r.json():Promise.reject(r.status))
+    .then(d=>{clearTimeout(tm);
+      if(d&&d.text){saveMem(aiKey,d.text);p.style.opacity=0;p.innerHTML=esc(d.text).replace(/\n+/g,'<br>');requestAnimationFrame(()=>{p.style.transition='opacity .5s';p.style.opacity=1;});}
+      drop();})
+    .catch(()=>{clearTimeout(tm);drop();});
+}
+// IG QR 揭曉
+let _qrLoaded=false;
+function toggleQR(){
+  const box=document.getElementById('qrbox'), rev=document.getElementById('igReveal');
+  if(!_qrLoaded){
+    const img=document.getElementById('qrimg');
+    img.onerror=()=>{const f=document.querySelector('.qr-frame');if(f)f.style.display='none';};
+    img.src=`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(IG_URL)}`;
+    _qrLoaded=true;
+  }
+  const open=box.classList.toggle('show');
+  rev.classList.toggle('opened',open);
+  if(open) setTimeout(()=>box.scrollIntoView({behavior:'smooth',block:'center'}),120);
+}
+function bar(name,v){return `<div class="bar"><div class="t"><span>${name}</span><span>${v}</span></div><div class="track"><div class="fill" data-v="${v}"></div></div></div>`;}
+const obs=new MutationObserver(()=>{document.querySelectorAll('#s4 .fill').forEach(f=>{if(!f.style.width)requestAnimationFrame(()=>f.style.width=f.dataset.v+'%');});});
+obs.observe(document.getElementById('s4'),{childList:true,subtree:true});
+
+function share(){
+  const s=window._share;
+  const txt=`✦ 我的今日籤 ✦\n${s.name}　${s.mood}　${s.lv}\n「${s.poem}」\n今日關鍵字：${s.kw}　能量牌：${s.card}\n運勢 ${s.overall}/100　幸運色 ${s.color}\n— 每日一籤・今日運勢占卜`;
+  if(navigator.share)navigator.share({title:"我的今日籤",text:txt}).catch(()=>{});
+  else navigator.clipboard.writeText(txt).then(()=>alert("已複製，貼到限動或聊天室分享吧！")).catch(()=>alert(txt));
+}
+</script>
+</body>
+</html>
