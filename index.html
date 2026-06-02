@@ -10,14 +10,17 @@
     --text:#f3ecdb; --muted:#9b93ab; --line:rgba(216,182,106,.18); --good:#7ad6a0; --mystic:#b69be0;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0; height:100%;}
-  body{
+  html{height:100%;}
+  body{margin:0;
     font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; color:var(--text);
     background:
       radial-gradient(1200px 700px at 50% -10%, #2a2140 0%, transparent 60%),
       radial-gradient(900px 600px at 90% 110%, #241a3a 0%, transparent 55%),
       linear-gradient(160deg,#0c0a14 0%,#120d1d 50%,#0a0810 100%);
-    min-height:100%; display:flex; align-items:center; justify-content:center; padding:24px 16px; overflow-x:hidden;
+    background-attachment:fixed;
+    /* align-items:flex-start 避免內容比螢幕高時，頂端被置中推出捲動範圍而卡死（IG/LINE 內建瀏覽器常見） */
+    min-height:100vh; min-height:100dvh; display:flex; align-items:flex-start; justify-content:center;
+    padding:24px 16px calc(40px + env(safe-area-inset-bottom)); overflow-x:hidden;
   }
   .stage{ width:100%; max-width:440px; position:relative; }
   .stars{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
