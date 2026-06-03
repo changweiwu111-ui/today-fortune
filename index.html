@@ -176,6 +176,13 @@
   .face-trait .ttl{font-size:16px; font-weight:800; margin:6px 0 8px;}
   .face-trait p{margin:0; font-size:13.5px; color:var(--muted); line-height:1.8;}
 
+  /* 💬 聊天破冰指引 */
+  .chat-teach{background:rgba(122,214,160,.08); border:1px solid var(--line); border-radius:14px; padding:14px 16px; font-size:13px; line-height:1.85; color:var(--gold-soft); margin-bottom:12px;}
+  .chat-card{background:rgba(12,10,20,.6); border:1px solid var(--line); border-left:3px solid var(--good); border-radius:12px; padding:13px 15px; margin-bottom:10px;}
+  .chat-t{font-size:12.5px; color:var(--good); letter-spacing:.04em; margin-bottom:7px; font-weight:700;}
+  .chat-op{font-size:15px; line-height:1.7; color:#fff3d8; font-weight:600;}
+  .chat-tip{font-size:12.5px; color:var(--muted); margin-top:8px; line-height:1.7;}
+
   .zhenyan{ text-align:center; font-size:16px; line-height:2; color:#fff3d8; padding:22px 18px; margin-top:22px; font-weight:600;
     border-top:1px solid var(--line); border-bottom:1px solid var(--line); letter-spacing:.06em;}
   .zhenyan .q{color:var(--gold); font-size:22px;}
@@ -486,6 +493,36 @@ const SCENE={
         "今天適合對自己好一點。把那些『應該』放一邊，問問自己今天真正想要什麼。<span class='em'>照顧好心情，運氣自然跟著好</span>。",
         "今天不必把自己逼太緊。<span class='em'>做好一件最重要的事，今天就值得了</span>。其餘的，允許它慢一點。穩穩過完今天，你會發現日子其實一直站在你這邊。"]
 };
+/* 💬 聊天破冰指引：依「今天要做的事」給可照念的開場白 */
+const SCENE_CHAT={
+  面試:{t:'關心他今天的面試',opener:'欸你今天不是有面試／重要的事嗎？後來順利嗎？',tip:'先聽他講過程、給肯定，別急著問結果。你的傾聽會讓他很有安全感。'},
+  簡報:{t:'聊他今天的報告',opener:'今天那個簡報／報告結束了嗎？準備起來壓力不小吧？',tip:'從「辛苦了」切入，讓他抒發。共感比建議更拉近距離。'},
+  業務:{t:'聊他在拼的案子',opener:'今天那個案子／合作談得怎麼樣？',tip:'好奇地問細節，同為打拼的人最有共鳴，他會願意多說。'},
+  考試:{t:'關心他的進修',opener:'最近在拼考試／進修喔？這種要衝刺的時期最累了。',tip:'肯定他的努力，分享你以前拼某件事的經驗，距離馬上拉近。'},
+  感情:{t:'輕鬆聊近況',opener:'最近生活上有什麼開心的事嗎？感覺你今天氣色不錯。',tip:'感情話題別太直接，從「開心的事」切入，讓他自己決定要說多少。'},
+  見人:{t:'聊他今天的會面',opener:'今天不是要見一個重要的人？氣氛還順利嗎？',tip:'問完安靜聽。他願意跟你說，代表把你當自己人。'},
+  決定:{t:'陪他想那個決定',opener:'你之前在猶豫的那件事，有方向了嗎？',tip:'不要幫他做決定，當那個「陪他一起想」的人，信任就建立了。'},
+  難題:{t:'當他的出口',opener:'最近是不是有件事讓你有點煩？想說的話我都在。',tip:'不必給答案，光是被聽見，他就會記得你的好。'},
+  休息:{t:'關心他的狀態',opener:'你最近是不是太拼了？有好好休息嗎？',tip:'一句真心的關心，比十句客套有用。'},
+  出遊:{t:'聊他的放鬆',opener:'最近有去哪走走嗎？看你需要放鬆一下。',tip:'從旅遊／興趣聊起最沒壓力，也最容易發現共同點。'},
+  新計畫:{t:'聊他的新嘗試',opener:'聽說你最近在弄個新東西？做什麼的啊，聽起來很酷。',tip:'對他的計畫展現真誠好奇，他會滔滔不絕，也會記得你的捧場。'},
+  綜合:{t:'輕鬆問近況',opener:'最近過得怎麼樣？有什麼新鮮事嗎？',tip:'開放式問句最好聊。重點是讓他多說、你多聽。'}
+};
+/* 生命靈數性格 → 一句「你是不是…」的開場白（讓對方覺得被看懂） */
+const LIFE_CHAT={
+  開創者:'你給人一種很有主見、很獨立的感覺，是不是很多事都習慣自己決定？',
+  和諧者:'你應該是那種很會替別人著想的人吧？身邊的人一定很依賴你。',
+  表達者:'你講話很有感染力欸，是不是天生人緣就很好？',
+  築基者:'你做事看起來很穩、很可靠，是那種讓人很放心的類型。',
+  自由者:'你好像很愛嘗試新東西，是不是閒不下來的那種人？',
+  守護者:'你給人很溫暖、很有責任感的感覺，是不是很常在照顧別人？',
+  探求者:'你好像想事情很深欸，是不是喜歡一個人靜靜思考的時候？',
+  豐盛者:'你看起來很有目標、很有企圖心，是不是對未來想很多？',
+  奉獻者:'你應該是那種心很大、很願意為別人付出的人吧？',
+  啟發者:'你給人一種很特別、直覺很準的感覺，常有人說你很懂他們吧？',
+  實現者:'你好像既有理想、又很務實，是那種能把想法真的做出來的人。'
+};
+
 function topicTitle(){
   if(USER.thing) return `關於你說的：「${esc(USER.thing)}」`;
   const map={面試:"關於今天的面試求職",簡報:"關於今天的開會簡報",業務:"關於今天的談合作・業務",考試:"關於今天的考試進修",感情:"關於今天的感情・約會",見人:"關於今天要見的重要的人",決定:"關於今天要做的決定",難題:"關於今天要處理的難題",休息:"關於今天的休息調整",出遊:"關於今天的出遊放鬆",新計畫:"關於今天要展開的新計畫",綜合:"關於你的今天"};
@@ -729,6 +766,18 @@ function computeAndShow(){
   const aiCached=loadMem(aiKey);
   const foryouHTML=aiCached?esc(aiCached).replace(/\n+/g,'<br>'):guide;
 
+  // 💬 聊天破冰指引（從結果產生可直接照念的開場白）
+  const chatTeach='剛測完運勢的當下，是對方最願意聊自己的時刻。用下面的開場白自然切入，記住三件事：①讓對方多說、你少說　②真誠好奇，先別急著給建議　③把他說的小細節記下來，下次提起，他會覺得你很在乎。';
+  const fortuneOpener=(lv==='上上籤'||lv==='上吉籤'||lv==='中吉籤')
+    ? `我幫你抽到「${lv}」欸，運勢不錯！最近是不是有遇到什麼好事？`
+    : `你今天這支籤在說「先蓄力、轉機在前」，最近是不是有點在沉潛、準備什麼？`;
+  const chatTopics=[
+    (SCENE_CHAT[USER.scene]||SCENE_CHAT.綜合),
+    {t:`聊聊「${esc(USER.name)}」這個人`, opener:(LIFE_CHAT[life.t]||'你給人一種很有自己想法的感覺欸。'), tip:'被你說中性格，對方會眼睛一亮——人最喜歡「被看懂」的感覺。'},
+    {t:'聊今天的心情', opener:`你今天給人的感覺是「${mood.label}」，最近心情怎麼樣呀？`, tip:'從心情切入最自然，對方願意聊情緒，關係就更近一層。'},
+    {t:'用這支籤破冰', opener:fortuneOpener, tip:'占卜結果是最天然的話題，邊聊邊笑，氣氛馬上就熱起來。'}
+  ];
+
   document.getElementById('resultCard').innerHTML=`
     <div class="brandtag">${esc(USER.name)} 的 今 日 籤</div>
     <div class="res-name">${today.replaceAll('-','/')}</div>
@@ -799,6 +848,12 @@ function computeAndShow(){
     <div class="section">
       <h3>你 的 面 相 本 命</h3>
       <div class="face-trait"><div class="ptn">🔮 ${face.ptn}</div><div class="ttl">屬於你的天生特質</div><p>${face.desc}</p></div>
+    </div>
+
+    <div class="section">
+      <h3>💬 怎 麼 跟 TA 聊（破 冰 指 引）</h3>
+      <div class="chat-teach">${chatTeach}</div>
+      ${chatTopics.map(x=>`<div class="chat-card"><div class="chat-t">${x.t}</div><div class="chat-op">「${x.opener}」</div><div class="chat-tip">▸ ${x.tip}</div></div>`).join('')}
     </div>
 
     <div class="zhenyan"><span class="q">「</span>${zhen}<span class="q">」</span></div>
