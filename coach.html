@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>破冰指引 ・ 私人頁</title>
+<style>
+  :root{ --gold:#d8b66a; --gold-soft:#e8d3a0; --text:#f3ecdb; --muted:#9b93ab; --line:rgba(216,182,106,.18); --good:#7ad6a0; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{height:100%;}
+  body{margin:0; font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif; color:var(--text);
+    background:radial-gradient(1000px 600px at 50% -10%, #2a2140 0%, transparent 60%), linear-gradient(160deg,#0c0a14,#120d1d 50%,#0a0810);
+    background-attachment:fixed; min-height:100vh; min-height:100dvh; display:flex; align-items:flex-start; justify-content:center;
+    padding:24px 16px calc(40px + env(safe-area-inset-bottom)); overflow-x:hidden;}
+  .wrap{ width:100%; max-width:460px; }
+  .card{ background:linear-gradient(180deg,rgba(30,23,48,.8),rgba(18,13,29,.92)); border:1px solid var(--line); border-radius:24px;
+    padding:26px 22px; box-shadow:0 24px 60px rgba(0,0,0,.5); }
+  .tag{ text-align:center; letter-spacing:.32em; font-size:11px; color:var(--gold); opacity:.85; padding-left:.32em; }
+  h1{ text-align:center; font-size:24px; margin:8px 0 2px; font-weight:800;
+    background:linear-gradient(180deg,#fff7e3,var(--gold)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .who{ text-align:center; color:var(--muted); font-size:13px; margin:8px 0 4px; }
+  .who b{ color:var(--gold-soft); font-size:15px; }
+  .lock{ text-align:center; font-size:11px; color:var(--muted); margin-top:6px; opacity:.8; }
+
+  .teach{ background:rgba(122,214,160,.08); border:1px solid var(--line); border-radius:14px; padding:14px 16px;
+    font-size:13px; line-height:1.85; color:var(--gold-soft); margin:18px 0 14px; }
+  .topic{ background:rgba(12,10,20,.6); border:1px solid var(--line); border-left:3px solid var(--good); border-radius:12px;
+    padding:14px 15px; margin-bottom:11px; }
+  .topic .t{ font-size:12.5px; color:var(--good); font-weight:700; letter-spacing:.04em; margin-bottom:8px; }
+  .topic .op{ font-size:16px; line-height:1.7; color:#fff3d8; font-weight:600; }
+  .topic .copy{ display:inline-block; margin-top:9px; font-size:11.5px; color:var(--gold-soft); border:1px solid var(--line);
+    border-radius:20px; padding:4px 12px; cursor:pointer; background:rgba(216,182,106,.06); }
+  .topic .copy:active{ transform:translateY(1px); }
+  .topic .tip{ font-size:12.5px; color:var(--muted); margin-top:9px; line-height:1.7; }
+
+  .empty{ text-align:center; color:var(--muted); font-size:14px; line-height:1.9; padding:30px 10px; }
+  .empty .em{ font-size:40px; display:block; margin-bottom:12px; }
+
+  .btn{ display:block; width:100%; text-align:center; text-decoration:none; border:0; cursor:pointer; margin-top:14px;
+    padding:14px; border-radius:14px; font-size:15px; font-weight:700; font-family:inherit;
+    color:#1a1208; background:linear-gradient(180deg,var(--gold-soft),var(--gold)); box-shadow:0 10px 24px rgba(216,182,106,.25); }
+  .btn.ghost{ background:transparent; color:var(--gold-soft); border:1px solid var(--line); box-shadow:none; }
+  .note{ text-align:center; font-size:11px; color:var(--muted); margin-top:16px; line-height:1.7; opacity:.75; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="tag">私 人 ・ 業 務 破 冰</div>
+    <h1>怎麼跟 TA 聊</h1>
+    <div id="content"></div>
+    <a class="btn ghost" href="./">← 回占卜首頁</a>
+    <div class="note">🔒 這頁只給你看。資料只存在這支手機上，對方看不到。<br>對方在你手機測完運勢後，回來這頁按「重新整理」即可。</div>
+  </div>
+</div>
+
+<script>
+function load(){
+  let data=null;
+  try{ const v=localStorage.getItem('fortune_last'); if(v) data=JSON.parse(v); }catch(e){}
+  const box=document.getElementById('content');
+
+  if(!data || !data.topics || !data.topics.length){
+    box.innerHTML=`<div class="empty"><span class="em">🔮</span>
+      還沒有人測過運勢。<br>讓對方在這支手機上完成一次占卜，<br>再回來這頁，就會出現可以聊的話題。</div>
+      <button class="btn" onclick="location.reload()">🔄 重新整理</button>`;
+    return;
+  }
+
+  const esc=s=>(s+'').replace(/[<>&"]/g,m=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[m]));
+  const topics=data.topics.map((x,i)=>`
+    <div class="topic">
+      <div class="t">${esc(x.t)}</div>
+      <div class="op">「${esc(x.opener)}」</div>
+      <span class="copy" data-i="${i}">📋 複製這句</span>
+      <div class="tip">▸ ${esc(x.tip)}</div>
+    </div>`).join('');
+
+  box.innerHTML=`
+    <div class="who">上一位測運勢的人：<b>${esc(data.name||'朋友')}</b><br>${esc(data.date||'')}</div>
+    <div class="teach">${esc(data.teach||'')}</div>
+    ${topics}
+    <button class="btn" onclick="location.reload()">🔄 換下一位（重新整理）</button>`;
+
+  box.querySelectorAll('.copy').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const t=data.topics[+el.dataset.i].opener;
+      (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject())
+        .then(()=>{ el.textContent='✓ 已複製'; setTimeout(()=>el.textContent='📋 複製這句',1500); })
+        .catch(()=>{ el.textContent='長按上面文字複製'; });
+    });
+  });
+}
+load();
+</script>
+</body>
+</html>
