@@ -777,6 +777,8 @@ function computeAndShow(){
     {t:'聊今天的心情', opener:`你今天給人的感覺是「${mood.label}」，最近心情怎麼樣呀？`, tip:'從心情切入最自然，對方願意聊情緒，關係就更近一層。'},
     {t:'用這支籤破冰', opener:fortuneOpener, tip:'占卜結果是最天然的話題，邊聊邊笑，氣氛馬上就熱起來。'}
   ];
+  // 聊天破冰指引「不」顯示在這個對外結果頁；只私下存起來，給韋總裁專用的 coach.html 看
+  saveMem('fortune_last', { name: USER.name, date: today, teach: chatTeach, topics: chatTopics });
 
   document.getElementById('resultCard').innerHTML=`
     <div class="brandtag">${esc(USER.name)} 的 今 日 籤</div>
@@ -848,12 +850,6 @@ function computeAndShow(){
     <div class="section">
       <h3>你 的 面 相 本 命</h3>
       <div class="face-trait"><div class="ptn">🔮 ${face.ptn}</div><div class="ttl">屬於你的天生特質</div><p>${face.desc}</p></div>
-    </div>
-
-    <div class="section">
-      <h3>💬 怎 麼 跟 TA 聊（破 冰 指 引）</h3>
-      <div class="chat-teach">${chatTeach}</div>
-      ${chatTopics.map(x=>`<div class="chat-card"><div class="chat-t">${x.t}</div><div class="chat-op">「${x.opener}」</div><div class="chat-tip">▸ ${x.tip}</div></div>`).join('')}
     </div>
 
     <div class="zhenyan"><span class="q">「</span>${zhen}<span class="q">」</span></div>
